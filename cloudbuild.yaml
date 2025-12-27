@@ -1,0 +1,41 @@
+# Cloud Build configuration for AI Risk Gatekeeper
+# This file enables automatic builds when pushing to the repo
+
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/ai-risk-gatekeeper', '.']
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/ai-risk-gatekeeper']
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'ai-risk-gatekeeper'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/ai-risk-gatekeeper'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+
+images:
+  - 'gcr.io/$PROJECT_ID/ai-risk-gatekeeper'
+
+substitutions:
+  _REGION: asia-south1
+
+options:
+  logging: CLOUD_LOGGING_ONLY

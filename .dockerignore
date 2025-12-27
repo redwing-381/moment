@@ -1,0 +1,40 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Tests
+tests/
+pytest.ini
+.pytest_cache/
+
+# Docs
+docs/
+*.md
+
+# Local config
+.env.local
+*.log
+
+# macOS
+.DS_Store
+
+# Kiro
+.kiro/

@@ -1,8 +1,12 @@
-# 🛡️ AI Risk Gatekeeper
+# 🛡️ Moment - AI Risk Gatekeeper
 
 **Real-time AI-powered Enterprise Security using Confluent Kafka + Google Vertex AI**
 
 > Transform reactive security into proactive protection with sub-350ms risk decisions
+
+## 🌐 Live Demo
+
+**Try it now:** [https://moment-682177088008.asia-south1.run.app](https://moment-682177088008.asia-south1.run.app)
 
 ---
 
@@ -28,8 +32,8 @@ Employee Action → Kafka Stream → AI Analysis → Block/Allow/Escalate
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/ai-risk-gatekeeper.git
-cd ai-risk-gatekeeper
+git clone https://github.com/yourusername/moment.git
+cd moment
 
 # Create virtual environment
 python3 -m venv venv
@@ -47,22 +51,19 @@ cp .env.example .env
 
 ## 🎮 Running
 
-### Hackathon Demo (Recommended)
+### Web Dashboard
+```bash
+python web_app.py
+# Open http://localhost:8080
+```
+
+### Terminal Demo
 ```bash
 python hackathon_demo.py
 ```
-Beautiful interactive demo with scenarios:
-- 👤 Normal User → ALLOW
-- 💀 Data Exfiltration → BLOCK
-- 🤖 Live AI Decision with Gemini
-- 🌊 Flood Attack (20 events)
 
 ### Real-Time Mode
 ```bash
-# Run all agents as Kafka consumers
-python run_realtime.py
-
-# Also generate test events
 python run_realtime.py --produce --rate 2
 ```
 
@@ -108,11 +109,17 @@ python run_realtime.py --produce --rate 2
 
 ---
 
-## 🧪 Testing
+## 🐳 Deployment
 
+### Docker
 ```bash
-pytest tests/ -v
-# 31 tests passing
+docker build -t moment .
+docker run -p 8080:8080 --env-file .env moment
+```
+
+### Google Cloud Run
+```bash
+./deploy.sh
 ```
 
 ---
@@ -120,17 +127,19 @@ pytest tests/ -v
 ## 📁 Project Structure
 
 ```
-ai-risk-gatekeeper/
-├── hackathon_demo.py         # Interactive demo
+moment/
+├── web_app.py                # FastAPI web dashboard
+├── hackathon_demo.py         # Terminal demo
 ├── run_realtime.py           # Real-time mode
+├── Dockerfile                # Container config
+├── deploy.sh                 # Cloud Run deployment
 ├── ai_risk_gatekeeper/
-│   ├── agents/               # Event Producer, Signal Processor, Decision Agent, Action Agent
+│   ├── agents/               # Event Producer, Signal Processor, Decision Agent
 │   ├── config/               # Settings management
 │   ├── infrastructure/       # Kafka setup
 │   └── models/               # Data schemas
-├── tests/                    # 31 unit/integration tests
-├── docs/                     # Requirements & Design docs
-└── .env.example              # Configuration template
+├── tests/                    # Unit/integration tests
+└── docs/                     # Design documentation
 ```
 
 ---
@@ -143,6 +152,14 @@ ai-risk-gatekeeper/
 | Signal Processing | <50ms | ~10ms |
 | AI Decision | <200ms | ~150ms |
 | **End-to-End** | **<350ms** | **~170ms** |
+
+---
+
+## 🧪 Testing
+
+```bash
+pytest tests/ -v
+```
 
 ---
 

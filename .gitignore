@@ -31,9 +31,12 @@ ENV/
 # Configuration files with secrets
 .env
 config.yaml
-*.json
-!package.json
 vertex-ai-service-account.json
+*-service-account.json
+
+# Keep these JSON files
+!package.json
+!cloudbuild.yaml
 
 # IDE
 .vscode/
