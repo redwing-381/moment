@@ -1,0 +1,29 @@
+# Kafka integration
+confluent-kafka==1.9.2
+
+# Google Cloud AI Platform
+google-cloud-aiplatform==1.34.0
+
+# Configuration management
+pyyaml==6.0
+python-dotenv==1.0.0
+
+# Data validation and serialization
+pydantic==2.4.2
+jsonschema==4.19.2
+
+# Async support (built-in with Python 3.11+)
+# asyncio is part of standard library
+
+# Logging and monitoring
+structlog==23.1.0
+
+# Testing dependencies
+pytest==7.4.2
+pytest-asyncio==0.21.1
+hypothesis==6.88.1
+
+# Development dependencies
+black==23.9.1
+flake8==6.0.0
+mypy==1.6.1
