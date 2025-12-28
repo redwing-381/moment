@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI Risk Gatekeeper - Real-time AI-powered Enterprise Security">
+  <title>AI Risk Gatekeeper</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="header-title">
+        <span class="header-logo">🛡️</span>
+        <span>AI Risk Gatekeeper</span>
+      </h1>
+      <p class="header-subtitle">Real-time AI-powered Enterprise Security | Confluent Kafka + Google Vertex AI</p>
+      <div class="header-controls">
+        <span id="sound-toggle" class="sound-toggle">🔊 Sound: ON</span>
+      </div>
+    </header>
+
+    <!-- Metrics Cards -->
+    <section class="grid metrics-grid mb-lg" aria-label="Key Metrics">
+      <div class="metric-card blue">
+        <div class="metric-value numeric" id="metric-events">0</div>
+        <div class="metric-label">Events</div>
+      </div>
+      <div class="metric-card purple">
+        <div class="metric-value numeric" id="metric-decisions">0</div>
+        <div class="metric-label">Decisions</div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-value numeric" id="metric-allowed">0</div>
+        <div class="metric-label">Allowed</div>
+      </div>
+      <div class="metric-card yellow">
+        <div class="metric-value numeric" id="metric-throttled">0</div>
+        <div class="metric-label">Throttled</div>
+      </div>
+      <div class="metric-card orange">
+        <div class="metric-value numeric" id="metric-escalated">0</div>
+        <div class="metric-label">Escalated</div>
+      </div>
+      <div class="metric-card red" id="blocked-card">
+        <div class="metric-value numeric" id="metric-blocked">0</div>
+        <div class="metric-label">Blocked</div>
+      </div>
+      <div class="metric-card cyan">
+        <div class="metric-value numeric" id="metric-latency">0</div>
+        <div class="metric-label">Avg ms</div>
+      </div>
+    </section>
+
+    <!-- Attack Scenario Presets -->
+    <section class="panel mb-lg" aria-label="Attack Scenarios">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="icon">⚔️</span>
+          Attack Scenario Presets
+        </h2>
+      </div>
+      <p class="text-muted text-sm mb-md">Run predefined attack patterns to demonstrate threat detection</p>
+      <div class="grid scenario-grid three-col-grid">
+        <button id="btn-insider" class="scenario-btn purple">
+          <span class="scenario-icon">🕵️</span>
+          <span class="scenario-title">Insider Threat</span>
+          <span class="scenario-desc">Privilege escalation & data theft</span>
+        </button>
+        <button id="btn-bruteforce" class="scenario-btn red">
+          <span class="scenario-icon">🔨</span>
+          <span class="scenario-title">Brute Force</span>
+          <span class="scenario-desc">High-frequency login attempts</span>
+        </button>
+        <button id="btn-exfiltration" class="scenario-btn orange">
+          <span class="scenario-icon">📤</span>
+          <span class="scenario-title">Data Exfiltration</span>
+          <span class="scenario-desc">Bulk download with geo anomaly</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Simulation Control Panel -->
+    <section class="panel mb-lg" aria-label="Simulation Controls">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="icon">🎮</span>
+          Simulation Control
+        </h2>
+      </div>
+      
+      <div class="grid four-col-grid mb-lg">
+        <div class="slider-wrapper">
+          <label class="slider-label">
+            Event Count: <span class="slider-value" id="event-count-val">50</span>
+          </label>
+          <input type="range" id="event-count" min="10" max="500" value="50">
+        </div>
+        <div class="slider-wrapper">
+          <label class="slider-label">
+            Attack %: <span class="slider-value" id="attack-pct-val">20</span>%
+          </label>
+          <input type="range" id="attack-pct" min="0" max="100" value="20">
+        </div>
+        <div class="slider-wrapper">
+          <label class="slider-label">
+            Duration: <span class="slider-value" id="duration-val">10</span>s
+          </label>
+          <input type="range" id="duration" min="5" max="60" value="10">
+        </div>
+        <div class="toggle-wrapper">
+          <label class="slider-label">Use Vertex AI</label>
+          <div class="flex items-center gap-sm mt-sm">
+            <input type="checkbox" id="use-ai" class="sr-only">
+            <label for="use-ai" class="toggle" onclick="this.classList.toggle('active')"></label>
+            <span class="toggle-label">Slower but smarter</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex gap-md control-buttons mb-md">
+        <button id="btn-start" class="btn btn-success">▶ Start Simulation</button>
+        <button id="btn-stop" class="btn btn-danger hidden">⏹ Stop</button>
+        <button id="btn-reset" class="btn btn-secondary">↺ Reset Metrics</button>
+        <button id="btn-export" class="btn btn-primary" disabled>📄 Export Report</button>
+      </div>
+      
+      <div class="progress-bar">
+        <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+      </div>
+      <p id="status-text" class="text-muted text-sm mt-sm">Ready to simulate</p>
+    </section>
+
+    <!-- Risk Trend Chart + Top Risky Actors -->
+    <section class="grid main-grid mb-lg" aria-label="Risk Analysis">
+      <!-- Risk Trend Chart -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span class="icon">📈</span>
+            Risk Score Trend
+          </h2>
+        </div>
+        <div class="chart-container">
+          <canvas id="risk-chart"></canvas>
+        </div>
+      </div>
+      
+      <!-- Top Risky Actors -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span class="icon">🎯</span>
+            Top Risky Actors
+          </h2>
+        </div>
+        <div id="risky-actors" class="risky-actors">
+          <p class="text-muted text-center p-md">No data yet...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Event Feed + Decision Explanation -->
+    <section class="grid two-col-grid mb-lg" aria-label="Event Analysis">
+      <!-- Live Event Feed -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span class="icon">📡</span>
+            Live Event Feed
+          </h2>
+        </div>
+        <div id="event-feed" class="event-feed">
+          <p class="text-muted text-center p-lg">Events will appear here when simulation starts...</p>
+        </div>
+      </div>
+      
+      <!-- Decision Explanation Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span class="icon">🧠</span>
+            AI Decision Explanation
+          </h2>
+        </div>
+        <div id="explanation-panel" class="explanation-panel">
+          <p class="text-muted text-center p-lg">Click on an event to see the AI's reasoning...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Confluent Integration Status -->
+    <section class="panel mb-lg" aria-label="Confluent Integration">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="icon">🔗</span>
+          Confluent Cloud Integration
+        </h2>
+        <div id="full-integration-badge" class="full-integration-badge hidden">
+          ✨ Full Integration Active
+        </div>
+      </div>
+      
+      <div class="grid three-col-grid">
+        <!-- Schema Registry Status -->
+        <div class="integration-card">
+          <div class="integration-header">
+            <span class="integration-label">Schema Registry</span>
+            <span id="sr-status" class="badge badge-neutral">Checking...</span>
+          </div>
+          <div class="integration-value" id="sr-format" style="color: var(--accent-blue-light);">JSON</div>
+          <div class="integration-desc">Data serialization format</div>
+        </div>
+        
+        <!-- ksqlDB Status -->
+        <div class="integration-card">
+          <div class="integration-header">
+            <span class="integration-label">ksqlDB</span>
+            <span id="ksql-status" class="badge badge-neutral">Checking...</span>
+          </div>
+          <div class="integration-value" id="ksql-streams" style="color: var(--accent-purple-light);">-</div>
+          <div class="integration-desc">Stream processing</div>
+        </div>
+        
+        <!-- Metrics API Status -->
+        <div class="integration-card">
+          <div class="integration-header">
+            <span class="integration-label">Metrics API</span>
+            <span id="metrics-api-status" class="badge badge-neutral">Checking...</span>
+          </div>
+          <div class="integration-value" id="cluster-id" style="color: var(--accent-cyan-light);">-</div>
+          <div class="integration-desc">Cluster monitoring</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Kafka Metrics Panel -->
+    <section class="panel mb-lg" aria-label="Kafka Metrics">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="icon">📊</span>
+          Confluent Kafka Metrics
+        </h2>
+      </div>
+      
+      <div class="grid three-col-grid">
+        <div class="integration-card">
+          <div class="integration-header">
+            <span class="integration-label">Connection Status</span>
+            <span id="kafka-status" class="badge badge-success">Connected</span>
+          </div>
+          <div class="integration-desc">Confluent Cloud (US-East1)</div>
+        </div>
+        <div class="integration-card">
+          <div class="integration-value numeric" id="kafka-messages" style="color: var(--accent-blue-light); font-size: var(--text-3xl);">0</div>
+          <div class="integration-label">Messages to Kafka</div>
+          <div class="integration-desc">Topic: enterprise-action-events</div>
+        </div>
+        <div class="integration-card">
+          <div class="integration-value numeric" style="color: var(--accent-purple-light); font-size: var(--text-3xl);">
+            <span id="kafka-rate">0</span>/s
+          </div>
+          <div class="integration-label">Throughput</div>
+          <div class="integration-desc">Messages per second</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ksqlDB Analytics Panel -->
+    <section class="panel mb-lg" aria-label="ksqlDB Analytics">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="icon">⚡</span>
+          ksqlDB Real-Time Analytics
+        </h2>
+      </div>
+      
+      <div id="ksqldb-placeholder" class="text-muted text-center p-md">
+        ksqlDB analytics will appear during simulation...
+      </div>
+      
+      <div id="ksqldb-summaries" class="hidden">
+        <div class="overflow-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Actor</th>
+                <th class="text-center">Events</th>
+                <th class="text-center">Avg Risk</th>
+                <th class="text-center">Max Risk</th>
+                <th class="text-center">High Risk</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody id="ksqldb-table-body"></tbody>
+          </table>
+        </div>
+        <div class="text-dim text-xs mt-md">
+          📊 5-minute tumbling window aggregation via ksqlDB
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Diagram -->
+    <section class="panel" aria-label="Architecture">
+      <div class="panel-header">
+        <h2 class="panel-title">
+          <span class="icon">🏗️</span>
+          Architecture
+        </h2>
+      </div>
+      <div class="architecture">
+        <pre>
+┌─────────────────────────────────────────────────────────────────┐
+│                    CONFLUENT CLOUD KAFKA                        │
+├─────────────────────────────────────────────────────────────────┤
+│  [enterprise-action-events] → [risk-signals] → [risk-decisions] │
+└─────────────────────────────────────────────────────────────────┘
+          │                        │                │
+    ┌─────┴─────┐           ┌─────┴─────┐    ┌─────┴─────┐
+    │   Event   │           │  Signal   │    │  Decision │
+    │ Producer  │           │ Processor │    │   Agent   │
+    └───────────┘           └───────────┘    └─────┬─────┘
+                                                   │
+                                             ┌─────┴─────┐
+                                             │  Vertex   │
+                                             │ AI Gemini │
+                                             └───────────┘
+        </pre>
+      </div>
+    </section>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
