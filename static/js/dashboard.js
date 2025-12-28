@@ -1,7 +1,115 @@
 /**
  * AI Risk Gatekeeper - Dashboard JavaScript
- * Real-time security monitoring dashboard
+ * Real-time security monitoring dashboard with sidebar navigation
  */
+
+// ============================================
+// Router State
+// ============================================
+const router = {
+  currentPage: 'dashboard',
+  pages: ['dashboard', 'events', 'analytics', 'settings'],
+  
+  init() {
+    // Listen for hash changes
+    window.addEventListener('hashchange', () => this.handleRoute());
+    // Handle initial route
+    this.handleRoute();
+  },
+  
+  handleRoute() {
+    const hash = window.location.hash.slice(2) || 'dashboard'; // Remove #/
+    const page = this.pages.includes(hash) ? hash : 'dashboard';
+    this.navigate(page, false);
+  },
+  
+  navigate(page, updateHash = true) {
+    if (!this.pages.includes(page)) return;
+    
+    // Update hash if needed
+    if (updateHash) {
+      window.location.hash = `/${page}`;
+    }
+    
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    
+    // Show target page
+    const targetPage = document.getElementById(`page-${page}`);
+    if (targetPage) {
+      targetPage.classList.add('active');
+    }
+    
+    // Update nav active state
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.classList.remove('active');
+      if (item.dataset.page === page) {
+        item.classList.add('active');
+      }
+    });
+    
+    // Clear events badge when viewing events page
+    if (page === 'events') {
+      badges.clearEvents();
+    }
+    
+    this.currentPage = page;
+  }
+};
+
+// ============================================
+// Badge System
+// ============================================
+const badges = {
+  eventsCount: 0,
+  
+  updateEvents(count) {
+    this.eventsCount = count;
+    const badge = document.getElementById('badge-events');
+    if (badge) {
+      if (count > 0 && router.currentPage !== 'events') {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.add('count');
+      } else {
+        badge.textContent = '';
+        badge.classList.remove('count');
+      }
+    }
+  },
+  
+  clearEvents() {
+    this.eventsCount = 0;
+    const badge = document.getElementById('badge-events');
+    if (badge) {
+      badge.textContent = '';
+      badge.classList.remove('count');
+    }
+  },
+  
+  updateAnalytics(allConnected) {
+    const badge = document.getElementById('badge-analytics');
+    if (badge) {
+      if (allConnected) {
+        badge.textContent = '✓';
+        badge.classList.add('status');
+      } else {
+        badge.textContent = '';
+        badge.classList.remove('status');
+      }
+    }
+  },
+  
+  updateDashboard(running) {
+    const badge = document.getElementById('badge-dashboard');
+    if (badge) {
+      if (running) {
+        badge.classList.add('running');
+      } else {
+        badge.classList.remove('running');
+      }
+    }
+  }
+};
 
 // ============================================
 // State Management
@@ -49,8 +157,11 @@ const appState = {
     isFirstEvent: true,
     lastBlockedCount: 0,
     soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+    visualAlerts: localStorage.getItem('visualAlerts') !== 'false',
+    sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true',
     lastAlertTime: 0,
-    alertThrottleMs: 500
+    alertThrottleMs: 500,
+    newBlockedCount: 0
   },
   
   // Chart instance
@@ -64,6 +175,16 @@ const appState = {
 // DOM Elements Cache
 // ============================================
 const elements = {
+  // Sidebar
+  sidebar: null,
+  sidebarOverlay: null,
+  sidebarCollapseBtn: null,
+  hamburgerBtn: null,
+  
+  // Header
+  connectionStatus: null,
+  soundToggle: null,
+  
   // Metrics
   metricEvents: null,
   metricDecisions: null,
@@ -112,13 +233,22 @@ const elements = {
   riskyActors: null,
   progressBar: null,
   statusText: null,
-  soundToggle: null,
   riskChart: null,
+  eventCountBadge: null,
   
   // ksqlDB
   ksqldbPlaceholder: null,
   ksqldbSummaries: null,
-  ksqldbTableBody: null
+  ksqldbTableBody: null,
+  
+  // Settings
+  settingSoundToggle: null,
+  settingVisualToggle: null,
+  settingSidebarToggle: null,
+  wsStatus: null,
+  kafkaConnStatus: null,
+  srConnStatus: null,
+  ksqlConnStatus: null
 };
 
 // ============================================
@@ -126,14 +256,27 @@ const elements = {
 // ============================================
 function initializeApp() {
   cacheElements();
+  initRouter();
+  initSidebar();
   initChart();
   initAudio();
   initEventListeners();
+  initSettings();
   connect();
   updateSoundToggle();
 }
 
 function cacheElements() {
+  // Sidebar
+  elements.sidebar = document.getElementById('sidebar');
+  elements.sidebarOverlay = document.getElementById('sidebar-overlay');
+  elements.sidebarCollapseBtn = document.getElementById('sidebar-collapse');
+  elements.hamburgerBtn = document.getElementById('hamburger-btn');
+  
+  // Header
+  elements.connectionStatus = document.getElementById('connection-status');
+  elements.soundToggle = document.getElementById('sound-toggle');
+  
   // Metrics
   elements.metricEvents = document.getElementById('metric-events');
   elements.metricDecisions = document.getElementById('metric-decisions');
@@ -182,13 +325,123 @@ function cacheElements() {
   elements.riskyActors = document.getElementById('risky-actors');
   elements.progressBar = document.getElementById('progress-bar');
   elements.statusText = document.getElementById('status-text');
-  elements.soundToggle = document.getElementById('sound-toggle');
   elements.riskChart = document.getElementById('risk-chart');
+  elements.eventCountBadge = document.getElementById('event-count-badge');
   
   // ksqlDB
   elements.ksqldbPlaceholder = document.getElementById('ksqldb-placeholder');
   elements.ksqldbSummaries = document.getElementById('ksqldb-summaries');
   elements.ksqldbTableBody = document.getElementById('ksqldb-table-body');
+  
+  // Settings
+  elements.settingSoundToggle = document.getElementById('setting-sound-toggle');
+  elements.settingVisualToggle = document.getElementById('setting-visual-toggle');
+  elements.settingSidebarToggle = document.getElementById('setting-sidebar-toggle');
+  elements.wsStatus = document.getElementById('ws-status');
+  elements.kafkaConnStatus = document.getElementById('kafka-conn-status');
+  elements.srConnStatus = document.getElementById('sr-conn-status');
+  elements.ksqlConnStatus = document.getElementById('ksql-conn-status');
+}
+
+function initRouter() {
+  router.init();
+  
+  // Add click handlers to nav items
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const page = item.dataset.page;
+      if (page) {
+        router.navigate(page);
+        // Close mobile sidebar
+        closeMobileSidebar();
+      }
+    });
+  });
+}
+
+function initSidebar() {
+  // Apply saved collapsed state
+  if (appState.ui.sidebarCollapsed && elements.sidebar) {
+    elements.sidebar.classList.add('collapsed');
+  }
+  
+  // Collapse button
+  if (elements.sidebarCollapseBtn) {
+    elements.sidebarCollapseBtn.addEventListener('click', toggleSidebarCollapse);
+  }
+  
+  // Hamburger menu (mobile)
+  if (elements.hamburgerBtn) {
+    elements.hamburgerBtn.addEventListener('click', toggleMobileSidebar);
+  }
+  
+  // Overlay click closes sidebar
+  if (elements.sidebarOverlay) {
+    elements.sidebarOverlay.addEventListener('click', closeMobileSidebar);
+  }
+}
+
+function toggleSidebarCollapse() {
+  if (elements.sidebar) {
+    elements.sidebar.classList.toggle('collapsed');
+    appState.ui.sidebarCollapsed = elements.sidebar.classList.contains('collapsed');
+    localStorage.setItem('sidebarCollapsed', appState.ui.sidebarCollapsed);
+    
+    // Update settings toggle if on settings page
+    if (elements.settingSidebarToggle) {
+      elements.settingSidebarToggle.classList.toggle('active', appState.ui.sidebarCollapsed);
+    }
+  }
+}
+
+function toggleMobileSidebar() {
+  if (elements.sidebar) {
+    elements.sidebar.classList.toggle('open');
+  }
+  if (elements.sidebarOverlay) {
+    elements.sidebarOverlay.classList.toggle('active');
+  }
+}
+
+function closeMobileSidebar() {
+  if (elements.sidebar) {
+    elements.sidebar.classList.remove('open');
+  }
+  if (elements.sidebarOverlay) {
+    elements.sidebarOverlay.classList.remove('active');
+  }
+}
+
+function initSettings() {
+  // Sound toggle
+  if (elements.settingSoundToggle) {
+    elements.settingSoundToggle.classList.toggle('active', appState.ui.soundEnabled);
+    elements.settingSoundToggle.addEventListener('click', () => {
+      appState.ui.soundEnabled = !appState.ui.soundEnabled;
+      localStorage.setItem('soundEnabled', appState.ui.soundEnabled);
+      elements.settingSoundToggle.classList.toggle('active', appState.ui.soundEnabled);
+      updateSoundToggle();
+    });
+  }
+  
+  // Visual alerts toggle
+  if (elements.settingVisualToggle) {
+    elements.settingVisualToggle.classList.toggle('active', appState.ui.visualAlerts);
+    elements.settingVisualToggle.addEventListener('click', () => {
+      appState.ui.visualAlerts = !appState.ui.visualAlerts;
+      localStorage.setItem('visualAlerts', appState.ui.visualAlerts);
+      elements.settingVisualToggle.classList.toggle('active', appState.ui.visualAlerts);
+    });
+  }
+  
+  // Sidebar collapse toggle
+  if (elements.settingSidebarToggle) {
+    elements.settingSidebarToggle.classList.toggle('active', appState.ui.sidebarCollapsed);
+    elements.settingSidebarToggle.addEventListener('click', () => {
+      toggleSidebarCollapse();
+    });
+  }
 }
 
 
@@ -239,7 +492,32 @@ function sendMessage(message) {
 }
 
 function updateConnectionIndicator(status) {
-  // Could add a visual connection indicator here
+  if (elements.connectionStatus) {
+    elements.connectionStatus.className = `connection-indicator ${status}`;
+    const statusText = elements.connectionStatus.querySelector('.status-text');
+    if (statusText) {
+      const statusMap = {
+        'connected': 'Connected',
+        'disconnected': 'Disconnected',
+        'connecting': 'Connecting...',
+        'error': 'Error'
+      };
+      statusText.textContent = statusMap[status] || 'Unknown';
+    }
+  }
+  
+  // Update settings page status
+  if (elements.wsStatus) {
+    const statusMap = {
+      'connected': { text: 'Connected', class: 'badge-success' },
+      'disconnected': { text: 'Disconnected', class: 'badge-error' },
+      'connecting': { text: 'Connecting...', class: 'badge-warning' },
+      'error': { text: 'Error', class: 'badge-error' }
+    };
+    const s = statusMap[status] || statusMap.connecting;
+    elements.wsStatus.textContent = s.text;
+    elements.wsStatus.className = `badge ${s.class}`;
+  }
 }
 
 // ============================================
@@ -293,15 +571,23 @@ function handleMetricsUpdate(data) {
 
 function handleEventProcessed(data) {
   addEventToFeed(data);
+  
+  // Update event count badge on events page
+  if (elements.eventCountBadge) {
+    const count = appState.metrics.events_produced;
+    elements.eventCountBadge.textContent = `${count} events`;
+  }
 }
 
 function handleSimulationStarted(data) {
   appState.simulation.running = true;
   appState.ui.isFirstEvent = true;
+  appState.ui.newBlockedCount = 0;
   
   if (elements.btnStart) elements.btnStart.classList.add('hidden');
   if (elements.btnStop) elements.btnStop.classList.remove('hidden');
   
+  badges.updateDashboard(true);
   updateStatusText(`Processing ${data.total_events} events...`);
 }
 
@@ -312,6 +598,7 @@ function handleSimulationComplete() {
   if (elements.btnStop) elements.btnStop.classList.add('hidden');
   if (elements.btnExport) elements.btnExport.disabled = false;
   
+  badges.updateDashboard(false);
   updateProgress(100);
   updateStatusText('Simulation complete!');
 }
@@ -320,10 +607,12 @@ function handleScenarioStarted(data) {
   appState.simulation.running = true;
   appState.simulation.scenarioName = data.scenario.name;
   appState.ui.isFirstEvent = true;
+  appState.ui.newBlockedCount = 0;
   
   if (elements.btnStart) elements.btnStart.classList.add('hidden');
   if (elements.btnStop) elements.btnStop.classList.remove('hidden');
   
+  badges.updateDashboard(true);
   updateStatusText(`${data.scenario.icon} Running: ${data.scenario.name}`);
 }
 
@@ -335,6 +624,7 @@ function handleScenarioComplete(data) {
   if (elements.btnStop) elements.btnStop.classList.add('hidden');
   if (elements.btnExport) elements.btnExport.disabled = false;
   
+  badges.updateDashboard(false);
   updateProgress(100);
   
   const summary = data.summary;
@@ -346,8 +636,10 @@ function handleScenarioComplete(data) {
 function handleMetricsReset() {
   appState.ui.isFirstEvent = true;
   appState.ui.lastBlockedCount = 0;
+  appState.ui.newBlockedCount = 0;
   
   updateProgress(0);
+  badges.clearEvents();
   
   if (elements.eventFeed) {
     elements.eventFeed.innerHTML = '<p class="text-muted text-center p-lg">Events will appear here when simulation starts...</p>';
@@ -359,6 +651,10 @@ function handleMetricsReset() {
   
   if (elements.riskyActors) {
     elements.riskyActors.innerHTML = '<p class="text-muted text-center p-md">No data yet...</p>';
+  }
+  
+  if (elements.eventCountBadge) {
+    elements.eventCountBadge.textContent = '0 events';
   }
   
   if (elements.ksqldbSummaries) elements.ksqldbSummaries.classList.add('hidden');
@@ -492,8 +788,16 @@ function updateMetrics(metrics) {
     elements.metricLatency.textContent = metrics.avg_latency_ms.toFixed(1);
   }
   
-  // Check for new blocks
+  // Check for new blocks and update badge
   if (metrics.blocked > appState.ui.lastBlockedCount) {
+    const newBlocks = metrics.blocked - appState.ui.lastBlockedCount;
+    appState.ui.newBlockedCount += newBlocks;
+    
+    // Update events badge if not on events page
+    if (router.currentPage !== 'events') {
+      badges.updateEvents(appState.ui.newBlockedCount);
+    }
+    
     triggerBlockAlert();
     appState.ui.lastBlockedCount = metrics.blocked;
   }
@@ -534,6 +838,18 @@ function updateKafkaMetrics(kafka) {
     const status = statusMap[kafka.connection_status] || statusMap.connecting;
     elements.kafkaStatus.textContent = status.text;
     elements.kafkaStatus.className = `badge ${status.class}`;
+  }
+  
+  // Update settings page
+  if (elements.kafkaConnStatus) {
+    const statusMap = {
+      'connected': { text: 'Connected', class: 'badge-success' },
+      'error': { text: 'Error', class: 'badge-error' },
+      'connecting': { text: 'Connecting...', class: 'badge-warning' }
+    };
+    const status = statusMap[kafka.connection_status] || statusMap.connecting;
+    elements.kafkaConnStatus.textContent = status.text;
+    elements.kafkaConnStatus.className = `badge ${status.class}`;
   }
   
   appState.kafka = { ...kafka };
@@ -588,11 +904,26 @@ function updateConfluentStatus(status) {
   }
   
   // Full integration badge
+  const allConnected = status.schema_registry.connected && 
+                       status.ksqldb.connected && 
+                       status.metrics_api.connected;
+  
   if (elements.fullIntegrationBadge) {
-    const allConnected = status.schema_registry.connected && 
-                         status.ksqldb.connected && 
-                         status.metrics_api.connected;
     elements.fullIntegrationBadge.classList.toggle('hidden', !allConnected);
+  }
+  
+  // Update analytics badge
+  badges.updateAnalytics(allConnected);
+  
+  // Update settings page
+  if (elements.srConnStatus) {
+    elements.srConnStatus.textContent = status.schema_registry.connected ? 'Connected' : 'Offline';
+    elements.srConnStatus.className = `badge ${status.schema_registry.connected ? 'badge-success' : 'badge-neutral'}`;
+  }
+  
+  if (elements.ksqlConnStatus) {
+    elements.ksqlConnStatus.textContent = status.ksqldb.connected ? 'Connected' : 'Offline';
+    elements.ksqlConnStatus.className = `badge ${status.ksqldb.connected ? 'badge-success' : 'badge-neutral'}`;
   }
   
   appState.confluent = { ...status };
@@ -783,20 +1114,28 @@ function toggleSound() {
   appState.ui.soundEnabled = !appState.ui.soundEnabled;
   localStorage.setItem('soundEnabled', appState.ui.soundEnabled);
   updateSoundToggle();
+  
+  // Update settings toggle if exists
+  if (elements.settingSoundToggle) {
+    elements.settingSoundToggle.classList.toggle('active', appState.ui.soundEnabled);
+  }
 }
 
 function updateSoundToggle() {
   if (elements.soundToggle) {
-    elements.soundToggle.textContent = appState.ui.soundEnabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+    elements.soundToggle.textContent = appState.ui.soundEnabled ? '🔊' : '🔇';
+    elements.soundToggle.title = appState.ui.soundEnabled ? 'Sound ON' : 'Sound OFF';
   }
 }
 
 function triggerBlockAlert() {
   playAlertSound();
   
-  // Visual flash
-  document.body.classList.add('screen-flash');
-  setTimeout(() => document.body.classList.remove('screen-flash'), 300);
+  // Visual flash (if enabled)
+  if (appState.ui.visualAlerts) {
+    document.body.classList.add('screen-flash');
+    setTimeout(() => document.body.classList.remove('screen-flash'), 300);
+  }
   
   // Card animation
   if (elements.blockedCard) {
@@ -860,7 +1199,7 @@ function initEventListeners() {
     elements.btnExport.addEventListener('click', exportReport);
   }
   
-  // Sound toggle
+  // Sound toggle in header
   if (elements.soundToggle) {
     elements.soundToggle.addEventListener('click', toggleSound);
   }
