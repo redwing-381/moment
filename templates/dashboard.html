@@ -3,382 +3,392 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="AI Risk Gatekeeper - Real-time AI-powered Enterprise Security">
-  <title>AI Risk Gatekeeper</title>
+  <meta name="description" content="Moment - Enterprise Security Platform">
+  <title>Moment</title>
   
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
-  <!-- Styles -->
   <link rel="stylesheet" href="/static/css/dashboard.css">
-  
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="app-shell">
-    <!-- Sidebar Navigation -->
+  <div class="app">
+    <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-logo">🛡️</span>
-        <span class="sidebar-brand">ARG</span>
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </div>
+        <span class="brand-text">Moment</span>
       </div>
       
       <nav class="sidebar-nav">
-        <a href="#/dashboard" class="nav-item active" data-page="dashboard">
-          <span class="nav-icon">🏠</span>
-          <span class="nav-label">Dashboard</span>
-          <span class="nav-badge" id="badge-dashboard"></span>
-        </a>
-        <a href="#/events" class="nav-item" data-page="events">
-          <span class="nav-icon">📡</span>
-          <span class="nav-label">Events</span>
-          <span class="nav-badge" id="badge-events"></span>
-        </a>
-        <a href="#/analytics" class="nav-item" data-page="analytics">
-          <span class="nav-icon">📊</span>
-          <span class="nav-label">Analytics</span>
-          <span class="nav-badge" id="badge-analytics"></span>
-        </a>
-        <a href="#/settings" class="nav-item" data-page="settings">
-          <span class="nav-icon">⚙️</span>
-          <span class="nav-label">Settings</span>
-        </a>
+        <div class="nav-section">
+          <div class="nav-section-title">Monitor</div>
+          <a href="#/dashboard" class="nav-link active" data-page="dashboard">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>Overview</span>
+            <span class="nav-badge" id="badge-dashboard"></span>
+          </a>
+          <a href="#/events" class="nav-link" data-page="events">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            <span>Event Stream</span>
+            <span class="nav-badge" id="badge-events"></span>
+          </a>
+          <a href="#/analytics" class="nav-link" data-page="analytics">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            <span>Analytics</span>
+            <span class="nav-badge" id="badge-analytics"></span>
+          </a>
+        </div>
+        
+        <div class="nav-section">
+          <div class="nav-section-title">Configure</div>
+          <a href="#/settings" class="nav-link" data-page="settings">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span>Settings</span>
+          </a>
+        </div>
       </nav>
       
       <div class="sidebar-footer">
-        <button class="sidebar-collapse-btn" id="sidebar-collapse" title="Collapse sidebar">
-          <span class="collapse-icon">◀</span>
-        </button>
+        <div class="connection-status" id="connection-status">
+          <span class="status-indicator"></span>
+          <span class="status-label">Connected</span>
+        </div>
       </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-      <!-- App Header -->
-      <header class="app-header">
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle menu">
-          <span></span>
-          <span></span>
-          <span></span>
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menu-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
         </button>
-        <div class="header-title-section">
-          <h1 class="app-title">AI Risk Gatekeeper</h1>
-          <p class="app-subtitle">Real-time AI-powered Enterprise Security</p>
+        <div class="topbar-title">
+          <h1 id="page-title">Overview</h1>
         </div>
-        <div class="header-controls">
-          <span id="connection-status" class="connection-indicator connected">
-            <span class="status-dot"></span>
-            <span class="status-text">Connected</span>
-          </span>
-          <span id="sound-toggle" class="sound-toggle">🔊</span>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="sound-toggle" title="Toggle sound">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          </button>
         </div>
       </header>
 
-      <!-- Page Container -->
-      <div class="page-container">
+      <div class="content">
 
-        <!-- ==================== DASHBOARD PAGE ==================== -->
+        <!-- OVERVIEW PAGE -->
         <div id="page-dashboard" class="page active">
-          <!-- Metrics Cards -->
-          <section class="grid metrics-grid mb-lg" aria-label="Key Metrics">
-            <div class="metric-card blue">
-              <div class="metric-value numeric" id="metric-events">0</div>
-              <div class="metric-label">Events</div>
+          <!-- Stats Row -->
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Total Events</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+              </div>
+              <div class="stat-value" id="metric-events">0</div>
             </div>
-            <div class="metric-card purple">
-              <div class="metric-value numeric" id="metric-decisions">0</div>
-              <div class="metric-label">Decisions</div>
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Decisions</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/>
+                </svg>
+              </div>
+              <div class="stat-value" id="metric-decisions">0</div>
             </div>
-            <div class="metric-card green">
-              <div class="metric-value numeric" id="metric-allowed">0</div>
-              <div class="metric-label">Allowed</div>
+            <div class="stat-card success">
+              <div class="stat-header">
+                <span class="stat-label">Allowed</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <div class="stat-value" id="metric-allowed">0</div>
             </div>
-            <div class="metric-card yellow">
-              <div class="metric-value numeric" id="metric-throttled">0</div>
-              <div class="metric-label">Throttled</div>
+            <div class="stat-card warning">
+              <div class="stat-header">
+                <span class="stat-label">Throttled</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+              </div>
+              <div class="stat-value" id="metric-throttled">0</div>
             </div>
-            <div class="metric-card orange">
-              <div class="metric-value numeric" id="metric-escalated">0</div>
-              <div class="metric-label">Escalated</div>
+            <div class="stat-card warning">
+              <div class="stat-header">
+                <span class="stat-label">Escalated</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div class="stat-value" id="metric-escalated">0</div>
             </div>
-            <div class="metric-card red" id="blocked-card">
-              <div class="metric-value numeric" id="metric-blocked">0</div>
-              <div class="metric-label">Blocked</div>
+            <div class="stat-card danger" id="blocked-card">
+              <div class="stat-header">
+                <span class="stat-label">Blocked</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>
+              </div>
+              <div class="stat-value" id="metric-blocked">0</div>
             </div>
-            <div class="metric-card cyan">
-              <div class="metric-value numeric" id="metric-latency">0</div>
-              <div class="metric-label">Avg ms</div>
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-label">Avg Latency</span>
+                <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <div class="stat-value"><span id="metric-latency">0</span><span class="stat-unit">ms</span></div>
             </div>
-          </section>
+          </div>
 
-          <!-- Attack Scenario Presets -->
-          <section class="panel mb-lg" aria-label="Attack Scenarios">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">⚔️</span>
-                Attack Scenario Presets
-              </h2>
+          <!-- Simulation Controls -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Simulation Control</h2>
+              <span class="card-badge" id="status-text">Ready</span>
             </div>
-            <p class="text-muted text-sm mb-md">Run predefined attack patterns to demonstrate threat detection</p>
-            <div class="grid scenario-grid three-col-grid">
-              <button id="btn-insider" class="scenario-btn purple">
-                <span class="scenario-icon">🕵️</span>
-                <span class="scenario-title">Insider Threat</span>
-                <span class="scenario-desc">Privilege escalation & data theft</span>
-              </button>
-              <button id="btn-bruteforce" class="scenario-btn red">
-                <span class="scenario-icon">🔨</span>
-                <span class="scenario-title">Brute Force</span>
-                <span class="scenario-desc">High-frequency login attempts</span>
-              </button>
-              <button id="btn-exfiltration" class="scenario-btn orange">
-                <span class="scenario-icon">📤</span>
-                <span class="scenario-title">Data Exfiltration</span>
-                <span class="scenario-desc">Bulk download with geo anomaly</span>
-              </button>
+            <div class="card-body">
+              <div class="scenario-buttons">
+                <button id="btn-insider" class="scenario-btn">
+                  <span class="scenario-label">Insider Threat</span>
+                  <span class="scenario-desc">Privilege escalation pattern</span>
+                </button>
+                <button id="btn-bruteforce" class="scenario-btn">
+                  <span class="scenario-label">Brute Force</span>
+                  <span class="scenario-desc">High-frequency attempts</span>
+                </button>
+                <button id="btn-exfiltration" class="scenario-btn">
+                  <span class="scenario-label">Data Exfiltration</span>
+                  <span class="scenario-desc">Bulk download anomaly</span>
+                </button>
+              </div>
+              
+              <div class="controls-grid">
+                <div class="control-group">
+                  <label class="control-label">Events</label>
+                  <input type="range" id="event-count" min="10" max="500" value="50" class="range-input">
+                  <span class="control-value" id="event-count-val">50</span>
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Attack %</label>
+                  <input type="range" id="attack-pct" min="0" max="100" value="20" class="range-input">
+                  <span class="control-value" id="attack-pct-val">20%</span>
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Duration</label>
+                  <input type="range" id="duration" min="5" max="60" value="10" class="range-input">
+                  <span class="control-value" id="duration-val">10s</span>
+                </div>
+                <div class="control-group">
+                  <label class="control-label">Vertex AI</label>
+                  <label class="switch">
+                    <input type="checkbox" id="use-ai">
+                    <span class="switch-slider"></span>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="progress-container">
+                <div class="progress-bar">
+                  <div class="progress-fill" id="progress-bar"></div>
+                </div>
+              </div>
+              
+              <div class="action-buttons">
+                <button id="btn-start" class="btn btn-primary">Start Simulation</button>
+                <button id="btn-stop" class="btn btn-danger hidden">Stop</button>
+                <button id="btn-reset" class="btn btn-secondary">Reset</button>
+                <button id="btn-export" class="btn btn-secondary" disabled>Export Report</button>
+              </div>
             </div>
-          </section>
+          </div>
 
-          <!-- Simulation Control Panel -->
-          <section class="panel mb-lg" aria-label="Simulation Controls">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">🎮</span>
-                Simulation Control
-              </h2>
-            </div>
-            
-            <div class="grid four-col-grid mb-lg">
-              <div class="slider-wrapper">
-                <label class="slider-label">
-                  Event Count: <span class="slider-value" id="event-count-val">50</span>
-                </label>
-                <input type="range" id="event-count" min="10" max="500" value="50">
+          <!-- Charts Row -->
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Risk Score Trend</h2>
               </div>
-              <div class="slider-wrapper">
-                <label class="slider-label">
-                  Attack %: <span class="slider-value" id="attack-pct-val">20</span>%
-                </label>
-                <input type="range" id="attack-pct" min="0" max="100" value="20">
-              </div>
-              <div class="slider-wrapper">
-                <label class="slider-label">
-                  Duration: <span class="slider-value" id="duration-val">10</span>s
-                </label>
-                <input type="range" id="duration" min="5" max="60" value="10">
-              </div>
-              <div class="toggle-wrapper">
-                <label class="slider-label">Use Vertex AI</label>
-                <div class="flex items-center gap-sm mt-sm">
-                  <input type="checkbox" id="use-ai" class="sr-only">
-                  <label for="use-ai" class="toggle" onclick="this.classList.toggle('active')"></label>
-                  <span class="toggle-label">Slower but smarter</span>
+              <div class="card-body">
+                <div class="chart-container">
+                  <canvas id="risk-chart"></canvas>
                 </div>
               </div>
             </div>
             
-            <div class="flex gap-md control-buttons mb-md">
-              <button id="btn-start" class="btn btn-success">▶ Start Simulation</button>
-              <button id="btn-stop" class="btn btn-danger hidden">⏹ Stop</button>
-              <button id="btn-reset" class="btn btn-secondary">↺ Reset Metrics</button>
-              <button id="btn-export" class="btn btn-primary" disabled>📄 Export Report</button>
-            </div>
-            
-            <div class="progress-bar">
-              <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
-            </div>
-            <p id="status-text" class="text-muted text-sm mt-sm">Ready to simulate</p>
-          </section>
-
-          <!-- Risk Trend Chart + Top Risky Actors -->
-          <section class="grid main-grid mb-lg" aria-label="Risk Analysis">
-            <!-- Risk Trend Chart -->
-            <div class="panel">
-              <div class="panel-header">
-                <h2 class="panel-title">
-                  <span class="icon">📈</span>
-                  Risk Score Trend
-                </h2>
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Top Risk Actors</h2>
               </div>
-              <div class="chart-container">
-                <canvas id="risk-chart"></canvas>
+              <div class="card-body">
+                <div id="risky-actors" class="actor-list">
+                  <div class="empty-state">No data available</div>
+                </div>
               </div>
             </div>
-            
-            <!-- Top Risky Actors -->
-            <div class="panel">
-              <div class="panel-header">
-                <h2 class="panel-title">
-                  <span class="icon">🎯</span>
-                  Top Risky Actors
-                </h2>
-              </div>
-              <div id="risky-actors" class="risky-actors">
-                <p class="text-muted text-center p-md">No data yet...</p>
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
 
-        <!-- ==================== EVENTS PAGE ==================== -->
+        <!-- EVENTS PAGE -->
         <div id="page-events" class="page">
-          <section class="grid events-grid" aria-label="Event Analysis">
-            <!-- Live Event Feed -->
-            <div class="panel events-feed-panel">
-              <div class="panel-header">
-                <h2 class="panel-title">
-                  <span class="icon">📡</span>
-                  Live Event Feed
-                </h2>
-                <span class="event-count-badge" id="event-count-badge">0 events</span>
+          <div class="grid-2 full-height">
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Event Stream</h2>
+                <span class="card-badge" id="event-count-badge">0 events</span>
               </div>
-              <div id="event-feed" class="event-feed event-feed-full">
-                <p class="text-muted text-center p-lg">Events will appear here when simulation starts...</p>
+              <div class="card-body">
+                <div id="event-feed" class="event-feed">
+                  <div class="empty-state">Events will appear when simulation starts</div>
+                </div>
               </div>
             </div>
             
-            <!-- Decision Explanation Panel -->
-            <div class="panel explanation-panel-container">
-              <div class="panel-header">
-                <h2 class="panel-title">
-                  <span class="icon">🧠</span>
-                  AI Decision Explanation
-                </h2>
+            <div class="card">
+              <div class="card-header">
+                <h2 class="card-title">Decision Analysis</h2>
               </div>
-              <div id="explanation-panel" class="explanation-panel">
-                <p class="text-muted text-center p-lg">Click on an event to see the AI's reasoning...</p>
+              <div class="card-body">
+                <div id="explanation-panel" class="explanation-panel">
+                  <div class="empty-state">Select an event to view analysis</div>
+                </div>
               </div>
             </div>
-          </section>
+          </div>
         </div>
 
-        <!-- ==================== ANALYTICS PAGE ==================== -->
+        <!-- ANALYTICS PAGE -->
         <div id="page-analytics" class="page">
-          <!-- Confluent Integration Status -->
-          <section class="panel mb-lg" aria-label="Confluent Integration">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">🔗</span>
-                Confluent Cloud Integration
-              </h2>
-              <div id="full-integration-badge" class="full-integration-badge hidden">
-                ✨ Full Integration Active
+          <!-- Integration Status -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Confluent Cloud Integration</h2>
+              <span class="card-badge success" id="full-integration-badge" style="display:none;">All Services Connected</span>
+            </div>
+            <div class="card-body">
+              <div class="integration-grid">
+                <div class="integration-item">
+                  <div class="integration-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div class="integration-info">
+                    <span class="integration-name">Schema Registry</span>
+                    <span class="integration-detail" id="sr-format">Avro</span>
+                  </div>
+                  <span class="status-badge" id="sr-status">Checking</span>
+                </div>
+                
+                <div class="integration-item">
+                  <div class="integration-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                    </svg>
+                  </div>
+                  <div class="integration-info">
+                    <span class="integration-name">ksqlDB</span>
+                    <span class="integration-detail" id="ksql-streams">Stream Processing</span>
+                  </div>
+                  <span class="status-badge" id="ksql-status">Checking</span>
+                </div>
+                
+                <div class="integration-item">
+                  <div class="integration-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                  </div>
+                  <div class="integration-info">
+                    <span class="integration-name">Metrics API</span>
+                    <span class="integration-detail" id="cluster-id">Cluster Monitoring</span>
+                  </div>
+                  <span class="status-badge" id="metrics-api-status">Checking</span>
+                </div>
               </div>
             </div>
-            
-            <div class="grid three-col-grid">
-              <!-- Schema Registry Status -->
-              <div class="integration-card">
-                <div class="integration-header">
-                  <span class="integration-label">Schema Registry</span>
-                  <span id="sr-status" class="badge badge-neutral">Checking...</span>
-                </div>
-                <div class="integration-value" id="sr-format" style="color: var(--accent-blue-light);">JSON</div>
-                <div class="integration-desc">Data serialization format</div>
-              </div>
-              
-              <!-- ksqlDB Status -->
-              <div class="integration-card">
-                <div class="integration-header">
-                  <span class="integration-label">ksqlDB</span>
-                  <span id="ksql-status" class="badge badge-neutral">Checking...</span>
-                </div>
-                <div class="integration-value" id="ksql-streams" style="color: var(--accent-purple-light);">-</div>
-                <div class="integration-desc">Stream processing</div>
-              </div>
-              
-              <!-- Metrics API Status -->
-              <div class="integration-card">
-                <div class="integration-header">
-                  <span class="integration-label">Metrics API</span>
-                  <span id="metrics-api-status" class="badge badge-neutral">Checking...</span>
-                </div>
-                <div class="integration-value" id="cluster-id" style="color: var(--accent-cyan-light);">-</div>
-                <div class="integration-desc">Cluster monitoring</div>
-              </div>
-            </div>
-          </section>
+          </div>
 
-          <!-- Kafka Metrics Panel -->
-          <section class="panel mb-lg" aria-label="Kafka Metrics">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">📊</span>
-                Confluent Kafka Metrics
-              </h2>
+          <!-- Kafka Metrics -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Kafka Metrics</h2>
+              <span class="status-badge success" id="kafka-status">Connected</span>
             </div>
-            
-            <div class="grid three-col-grid">
-              <div class="integration-card">
-                <div class="integration-header">
-                  <span class="integration-label">Connection Status</span>
-                  <span id="kafka-status" class="badge badge-success">Connected</span>
+            <div class="card-body">
+              <div class="metrics-grid">
+                <div class="metric-item">
+                  <span class="metric-label">Messages Sent</span>
+                  <span class="metric-value" id="kafka-messages">0</span>
                 </div>
-                <div class="integration-desc">Confluent Cloud (US-East1)</div>
-              </div>
-              <div class="integration-card">
-                <div class="integration-value numeric" id="kafka-messages" style="color: var(--accent-blue-light); font-size: var(--text-3xl);">0</div>
-                <div class="integration-label">Messages to Kafka</div>
-                <div class="integration-desc">Topic: enterprise-action-events</div>
-              </div>
-              <div class="integration-card">
-                <div class="integration-value numeric" style="color: var(--accent-purple-light); font-size: var(--text-3xl);">
-                  <span id="kafka-rate">0</span>/s
+                <div class="metric-item">
+                  <span class="metric-label">Throughput</span>
+                  <span class="metric-value"><span id="kafka-rate">0</span>/s</span>
                 </div>
-                <div class="integration-label">Throughput</div>
-                <div class="integration-desc">Messages per second</div>
+                <div class="metric-item">
+                  <span class="metric-label">Topic</span>
+                  <span class="metric-value mono">enterprise-action-events</span>
+                </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <!-- ksqlDB Analytics Panel -->
-          <section class="panel mb-lg" aria-label="ksqlDB Analytics">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">⚡</span>
-                ksqlDB Real-Time Analytics
-              </h2>
+          <!-- ksqlDB Table -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Real-Time Aggregations</h2>
+              <span class="card-subtitle">5-minute tumbling window</span>
             </div>
-            
-            <div id="ksqldb-placeholder" class="text-muted text-center p-md">
-              ksqlDB analytics will appear during simulation...
-            </div>
-            
-            <div id="ksqldb-summaries" class="hidden">
-              <div class="overflow-auto">
-                <table class="table">
+            <div class="card-body">
+              <div id="ksqldb-placeholder" class="empty-state">Aggregations will appear during simulation</div>
+              <div id="ksqldb-summaries" class="hidden">
+                <table class="data-table">
                   <thead>
                     <tr>
                       <th>Actor</th>
-                      <th class="text-center">Events</th>
-                      <th class="text-center">Avg Risk</th>
-                      <th class="text-center">Max Risk</th>
-                      <th class="text-center">High Risk</th>
-                      <th class="text-center">Status</th>
+                      <th>Events</th>
+                      <th>Avg Risk</th>
+                      <th>Max Risk</th>
+                      <th>High Risk</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody id="ksqldb-table-body"></tbody>
                 </table>
               </div>
-              <div class="text-dim text-xs mt-md">
-                📊 5-minute tumbling window aggregation via ksqlDB
-              </div>
             </div>
-          </section>
+          </div>
 
-          <!-- Architecture Diagram -->
-          <section class="panel" aria-label="Architecture">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">🏗️</span>
-                Architecture
-              </h2>
+          <!-- Architecture -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">System Architecture</h2>
             </div>
-            <div class="architecture">
-              <pre>
+            <div class="card-body">
+              <div class="architecture-diagram">
+                <pre>
 ┌─────────────────────────────────────────────────────────────────┐
 │                    CONFLUENT CLOUD KAFKA                        │
 ├─────────────────────────────────────────────────────────────────┤
@@ -393,135 +403,95 @@
                                              ┌─────┴─────┐
                                              │  Vertex   │
                                              │ AI Gemini │
-                                             └───────────┘
-              </pre>
+                                             └───────────┘</pre>
+              </div>
             </div>
-          </section>
+          </div>
         </div>
 
-        <!-- ==================== SETTINGS PAGE ==================== -->
+        <!-- SETTINGS PAGE -->
         <div id="page-settings" class="page">
-          <section class="panel mb-lg" aria-label="Preferences">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">🔔</span>
-                Notifications & Sound
-              </h2>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Preferences</h2>
             </div>
-            
-            <div class="settings-group">
-              <div class="setting-item">
-                <div class="setting-info">
-                  <span class="setting-label">Alert Sound</span>
-                  <span class="setting-desc">Play sound when events are blocked</span>
+            <div class="card-body">
+              <div class="settings-list">
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">Sound Alerts</span>
+                    <span class="setting-desc">Play audio when events are blocked</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="setting-sound" checked>
+                    <span class="switch-slider"></span>
+                  </label>
                 </div>
-                <div class="setting-control">
-                  <input type="checkbox" id="setting-sound" class="sr-only" checked>
-                  <label for="setting-sound" class="toggle active" id="setting-sound-toggle"></label>
-                </div>
-              </div>
-              
-              <div class="setting-item">
-                <div class="setting-info">
-                  <span class="setting-label">Visual Alerts</span>
-                  <span class="setting-desc">Flash screen on blocked events</span>
-                </div>
-                <div class="setting-control">
-                  <input type="checkbox" id="setting-visual" class="sr-only" checked>
-                  <label for="setting-visual" class="toggle active" id="setting-visual-toggle"></label>
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">Visual Alerts</span>
+                    <span class="setting-desc">Flash screen on blocked events</span>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="setting-visual" checked>
+                    <span class="switch-slider"></span>
+                  </label>
                 </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <section class="panel mb-lg" aria-label="Display">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">🎨</span>
-                Display Settings
-              </h2>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Connection Status</h2>
             </div>
-            
-            <div class="settings-group">
-              <div class="setting-item">
-                <div class="setting-info">
-                  <span class="setting-label">Compact Sidebar</span>
-                  <span class="setting-desc">Show icons only in sidebar</span>
+            <div class="card-body">
+              <div class="connection-list">
+                <div class="connection-row">
+                  <span class="connection-name">WebSocket</span>
+                  <span class="status-badge success" id="ws-status">Connected</span>
                 </div>
-                <div class="setting-control">
-                  <input type="checkbox" id="setting-sidebar" class="sr-only">
-                  <label for="setting-sidebar" class="toggle" id="setting-sidebar-toggle"></label>
+                <div class="connection-row">
+                  <span class="connection-name">Kafka</span>
+                  <span class="status-badge success" id="kafka-conn-status">Connected</span>
+                </div>
+                <div class="connection-row">
+                  <span class="connection-name">Schema Registry</span>
+                  <span class="status-badge" id="sr-conn-status">Checking</span>
+                </div>
+                <div class="connection-row">
+                  <span class="connection-name">ksqlDB</span>
+                  <span class="status-badge" id="ksql-conn-status">Checking</span>
                 </div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <section class="panel mb-lg" aria-label="Connection">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">🔌</span>
-                Connection Status
-              </h2>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">About</h2>
             </div>
-            
-            <div class="settings-group">
-              <div class="connection-info">
-                <div class="connection-row">
-                  <span class="connection-label">WebSocket</span>
-                  <span id="ws-status" class="badge badge-success">Connected</span>
-                </div>
-                <div class="connection-row">
-                  <span class="connection-label">Kafka</span>
-                  <span id="kafka-conn-status" class="badge badge-success">Connected</span>
-                </div>
-                <div class="connection-row">
-                  <span class="connection-label">Schema Registry</span>
-                  <span id="sr-conn-status" class="badge badge-neutral">Checking...</span>
-                </div>
-                <div class="connection-row">
-                  <span class="connection-label">ksqlDB</span>
-                  <span id="ksql-conn-status" class="badge badge-neutral">Checking...</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section class="panel" aria-label="About">
-            <div class="panel-header">
-              <h2 class="panel-title">
-                <span class="icon">ℹ️</span>
-                About
-              </h2>
-            </div>
-            
-            <div class="about-content">
-              <p class="text-secondary mb-md">
-                <strong>AI Risk Gatekeeper</strong> is a real-time enterprise security system 
-                that demonstrates the power of Confluent Kafka streaming combined with 
-                Google Vertex AI for intelligent risk assessment.
+            <div class="card-body">
+              <p class="about-text">
+                Moment is an enterprise security platform that combines 
+                Confluent Kafka streaming with Google Vertex AI for real-time threat detection.
               </p>
-              <div class="about-tech">
-                <span class="tech-badge">Confluent Kafka</span>
-                <span class="tech-badge">Schema Registry</span>
-                <span class="tech-badge">ksqlDB</span>
-                <span class="tech-badge">Google Vertex AI</span>
-                <span class="tech-badge">FastAPI</span>
+              <div class="tech-stack">
+                <span class="tech-tag">Confluent Kafka</span>
+                <span class="tech-tag">Schema Registry</span>
+                <span class="tech-tag">ksqlDB</span>
+                <span class="tech-tag">Vertex AI</span>
+                <span class="tech-tag">FastAPI</span>
               </div>
-              <p class="text-dim text-sm mt-md">
-                Built for the Confluent + Google Cloud Hackathon
-              </p>
             </div>
-          </section>
+          </div>
         </div>
 
-      </div><!-- End page-container -->
+      </div>
     </main>
-  </div><!-- End app-shell -->
+  </div>
 
-  <!-- Mobile Overlay -->
-  <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-  <!-- Scripts -->
+  <div class="mobile-overlay" id="mobile-overlay"></div>
   <script src="/static/js/dashboard.js"></script>
 </body>
 </html>
