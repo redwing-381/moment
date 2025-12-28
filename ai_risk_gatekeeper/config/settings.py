@@ -35,6 +35,31 @@ class KafkaConfig:
 
 
 @dataclass
+class SchemaRegistryConfig:
+    """Configuration for Confluent Schema Registry."""
+    url: str
+    api_key: str
+    api_secret: str
+
+
+@dataclass
+class KsqlDBConfig:
+    """Configuration for Confluent ksqlDB."""
+    endpoint: str
+    api_key: str
+    api_secret: str
+
+
+@dataclass
+class ConfluentCloudConfig:
+    """Configuration for Confluent Cloud Metrics API."""
+    api_key: str
+    api_secret: str
+    cluster_id: str
+    environment_id: str
+
+
+@dataclass
 class VertexAIConfig:
     """Configuration for Google Cloud Vertex AI integration."""
     project_id: str
@@ -53,6 +78,9 @@ class SystemConfig:
     """Overall system configuration."""
     kafka: KafkaConfig
     vertex_ai: VertexAIConfig
+    schema_registry: Optional[SchemaRegistryConfig] = None
+    ksqldb: Optional[KsqlDBConfig] = None
+    confluent_cloud: Optional[ConfluentCloudConfig] = None
     
     # Performance settings
     max_processing_time_ms: int = 350
@@ -159,10 +187,51 @@ class ConfigManager:
             )
         )
         
+        # Build Schema Registry configuration (optional)
+        schema_registry_config = None
+        sr_url = self._get_config_value("SCHEMA_REGISTRY_URL", None, required=False)
+        sr_key = self._get_config_value("SCHEMA_REGISTRY_API_KEY", None, required=False)
+        sr_secret = self._get_config_value("SCHEMA_REGISTRY_API_SECRET", None, required=False)
+        if sr_url and sr_key and sr_secret:
+            schema_registry_config = SchemaRegistryConfig(
+                url=sr_url,
+                api_key=sr_key,
+                api_secret=sr_secret
+            )
+        
+        # Build ksqlDB configuration (optional)
+        ksqldb_config = None
+        ksql_endpoint = self._get_config_value("KSQLDB_ENDPOINT", None, required=False)
+        ksql_key = self._get_config_value("KSQLDB_API_KEY", None, required=False)
+        ksql_secret = self._get_config_value("KSQLDB_API_SECRET", None, required=False)
+        if ksql_endpoint and ksql_key and ksql_secret:
+            ksqldb_config = KsqlDBConfig(
+                endpoint=ksql_endpoint,
+                api_key=ksql_key,
+                api_secret=ksql_secret
+            )
+        
+        # Build Confluent Cloud configuration (optional)
+        confluent_cloud_config = None
+        cc_key = self._get_config_value("CONFLUENT_CLOUD_API_KEY", None, required=False)
+        cc_secret = self._get_config_value("CONFLUENT_CLOUD_API_SECRET", None, required=False)
+        cc_cluster = self._get_config_value("CONFLUENT_CLUSTER_ID", None, required=False)
+        cc_env = self._get_config_value("CONFLUENT_ENVIRONMENT_ID", None, required=False)
+        if cc_key and cc_secret and cc_cluster and cc_env:
+            confluent_cloud_config = ConfluentCloudConfig(
+                api_key=cc_key,
+                api_secret=cc_secret,
+                cluster_id=cc_cluster,
+                environment_id=cc_env
+            )
+        
         # Build system configuration
         self._config = SystemConfig(
             kafka=kafka_config,
             vertex_ai=vertex_ai_config,
+            schema_registry=schema_registry_config,
+            ksqldb=ksqldb_config,
+            confluent_cloud=confluent_cloud_config,
             log_level=self._get_config_value(
                 "LOG_LEVEL", 
                 yaml_config.get("system", {}).get("log_level", "INFO"),

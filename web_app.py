@@ -29,6 +29,16 @@ from ai_risk_gatekeeper.agents import (
     DecisionAgent,
 )
 from ai_risk_gatekeeper.models.events import EnterpriseActionEvent
+from ai_risk_gatekeeper.config.settings import config_manager
+
+# Optional Confluent advanced features
+try:
+    from ai_risk_gatekeeper.agents.schema_registry import SchemaRegistryClient, create_avro_serializer
+    from ai_risk_gatekeeper.agents.ksqldb_client import KsqlDBClient, create_ksqldb_client
+    from ai_risk_gatekeeper.agents.confluent_metrics import ConfluentMetricsClient, create_confluent_metrics_client
+    CONFLUENT_FEATURES_AVAILABLE = True
+except ImportError:
+    CONFLUENT_FEATURES_AVAILABLE = False
 
 
 # Store for real-time metrics and events
@@ -58,6 +68,20 @@ class AppState:
             "topics_used": set(),
         }
         self.simulation_running = False
+        # New: Risk trend data (last 50 data points)
+        self.risk_trend: deque = deque(maxlen=50)
+        # New: Actor risk profiles
+        self.actor_profiles: dict = {}  # actor_id -> {events: int, blocked: int, avg_risk: float, last_action: str}
+        
+        # Confluent Advanced Features
+        self.schema_registry_client = None
+        self.ksqldb_client = None
+        self.confluent_metrics_client = None
+        self.confluent_status = {
+            "schema_registry": {"connected": False, "schema_version": None, "format": "JSON"},
+            "ksqldb": {"connected": False, "streams_ready": False},
+            "metrics_api": {"connected": False, "cluster_id": None, "region": None},
+        }
 
 
 state = AppState()
@@ -75,10 +99,69 @@ async def lifespan(app: FastAPI):
         state.processor = SignalProcessor(use_real_frequency=False)
         state.decision_agent = DecisionAgent()
         state.decision_agent.connect()
-        print("✓ All agents connected")
+        print("✓ Core agents connected")
     except Exception as e:
         state.kafka_metrics["connection_status"] = "error"
         print(f"Warning: Could not connect agents: {e}")
+    
+    # Initialize Confluent Advanced Features (graceful degradation)
+    if CONFLUENT_FEATURES_AVAILABLE:
+        try:
+            config = config_manager.load_config()
+            
+            # Schema Registry
+            if config.schema_registry:
+                try:
+                    client = SchemaRegistryClient(
+                        config.schema_registry.url,
+                        config.schema_registry.api_key,
+                        config.schema_registry.api_secret
+                    )
+                    if client.check_connection():
+                        state.schema_registry_client = client
+                        state.confluent_status["schema_registry"]["connected"] = True
+                        state.confluent_status["schema_registry"]["format"] = "Avro"
+                        print("✓ Schema Registry connected")
+                except Exception as e:
+                    print(f"Schema Registry unavailable: {e}")
+            
+            # ksqlDB
+            if config.ksqldb:
+                try:
+                    client = await create_ksqldb_client(
+                        config.ksqldb.endpoint,
+                        config.ksqldb.api_key,
+                        config.ksqldb.api_secret
+                    )
+                    if client:
+                        state.ksqldb_client = client
+                        state.confluent_status["ksqldb"]["connected"] = True
+                        # Try to set up streams
+                        if await client.setup_streams():
+                            state.confluent_status["ksqldb"]["streams_ready"] = True
+                        print("✓ ksqlDB connected")
+                except Exception as e:
+                    print(f"ksqlDB unavailable: {e}")
+            
+            # Confluent Cloud Metrics
+            if config.confluent_cloud:
+                try:
+                    client = await create_confluent_metrics_client(
+                        config.confluent_cloud.api_key,
+                        config.confluent_cloud.api_secret,
+                        config.confluent_cloud.cluster_id,
+                        config.confluent_cloud.environment_id
+                    )
+                    if client:
+                        state.confluent_metrics_client = client
+                        state.confluent_status["metrics_api"]["connected"] = True
+                        state.confluent_status["metrics_api"]["cluster_id"] = config.confluent_cloud.cluster_id
+                        print("✓ Confluent Metrics API connected")
+                except Exception as e:
+                    print(f"Confluent Metrics API unavailable: {e}")
+                    
+        except Exception as e:
+            print(f"Confluent features initialization error: {e}")
     
     yield
     
@@ -87,6 +170,10 @@ async def lifespan(app: FastAPI):
         state.producer.disconnect()
     if state.decision_agent:
         state.decision_agent.disconnect()
+    if state.ksqldb_client:
+        await state.ksqldb_client.close()
+    if state.confluent_metrics_client:
+        await state.confluent_metrics_client.close()
 
 
 app = FastAPI(
@@ -113,6 +200,69 @@ async def broadcast(message: dict):
             dead_clients.append(client)
     for client in dead_clients:
         state.connected_clients.remove(client)
+
+
+def generate_explanation(event: EnterpriseActionEvent, signal, decision_result: dict) -> str:
+    """Generate human-readable explanation for the decision."""
+    decision = decision_result["decision"]
+    risk_score = signal.risk_score
+    factors = signal.risk_factors
+    
+    explanations = []
+    
+    # Risk level context
+    if risk_score >= 0.8:
+        explanations.append(f"🔴 Critical risk level ({risk_score*100:.0f}%)")
+    elif risk_score >= 0.6:
+        explanations.append(f"🟠 High risk level ({risk_score*100:.0f}%)")
+    elif risk_score >= 0.4:
+        explanations.append(f"🟡 Moderate risk level ({risk_score*100:.0f}%)")
+    else:
+        explanations.append(f"🟢 Low risk level ({risk_score*100:.0f}%)")
+    
+    # Factor explanations
+    factor_texts = {
+        "high_frequency": f"User made {event.frequency_last_60s} requests in 60s (unusual activity)",
+        "geo_anomaly": "Location changed unexpectedly (possible account compromise)",
+        "sensitive_resource": f"Accessing {event.resource_sensitivity}-sensitivity resource",
+        "off_hours": "Activity outside normal business hours",
+        "privilege_escalation": "Attempting elevated privilege operation",
+        "bulk_operation": "Bulk data operation detected",
+    }
+    
+    for factor in factors[:3]:  # Top 3 factors
+        if factor in factor_texts:
+            explanations.append(f"• {factor_texts[factor]}")
+        else:
+            explanations.append(f"• {factor.replace('_', ' ').title()}")
+    
+    # Decision rationale
+    decision_texts = {
+        "block": "Action blocked to prevent potential security breach",
+        "throttle": "Rate limited to slow down suspicious activity",
+        "escalate": "Flagged for security team review",
+        "allow": "Permitted - within normal behavior patterns",
+    }
+    explanations.append(f"\n→ {decision_texts.get(decision, 'Decision made based on risk analysis')}")
+    
+    return "\n".join(explanations)
+
+
+def get_top_risky_actors(limit: int = 5) -> list:
+    """Get top risky actors sorted by average risk score."""
+    actors = []
+    for actor_id, profile in state.actor_profiles.items():
+        actors.append({
+            "actor_id": actor_id,
+            "events": profile["events"],
+            "blocked": profile["blocked"],
+            "avg_risk": round(profile["avg_risk"], 2),
+            "last_action": profile["last_action"],
+            "last_decision": profile["last_decision"],
+        })
+    # Sort by avg_risk descending, then by blocked count
+    actors.sort(key=lambda x: (x["avg_risk"], x["blocked"]), reverse=True)
+    return actors[:limit]
 
 
 async def process_single_event(event: EnterpriseActionEvent, use_ai: bool = False) -> dict:
@@ -159,6 +309,32 @@ async def process_single_event(event: EnterpriseActionEvent, use_ai: bool = Fals
     elif decision_type == "throttle":
         state.metrics["throttled"] += 1
     
+    # Update risk trend
+    state.risk_trend.append({
+        "timestamp": datetime.now().isoformat(),
+        "risk_score": signal.risk_score,
+        "decision": decision_type,
+    })
+    
+    # Update actor profiles
+    actor_id = event.actor_id
+    if actor_id not in state.actor_profiles:
+        state.actor_profiles[actor_id] = {
+            "events": 0,
+            "blocked": 0,
+            "total_risk": 0.0,
+            "last_action": "",
+            "last_decision": "",
+        }
+    profile = state.actor_profiles[actor_id]
+    profile["events"] += 1
+    profile["total_risk"] += signal.risk_score
+    profile["avg_risk"] = profile["total_risk"] / profile["events"]
+    profile["last_action"] = event.action
+    profile["last_decision"] = decision_type
+    if decision_type == "block":
+        profile["blocked"] += 1
+    
     # Build result
     result = {
         "type": "event_processed",
@@ -177,6 +353,7 @@ async def process_single_event(event: EnterpriseActionEvent, use_ai: bool = Fals
         },
         "decision": decision_result,
         "latency_ms": round(latency_ms, 2),
+        "explanation": generate_explanation(event, signal, decision_result),
     }
     
     state.recent_events.append(result)
@@ -234,6 +411,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     "avg_latency_ms": 0,
                     "latencies": deque(maxlen=100),
                 }
+                state.risk_trend.clear()
+                state.actor_profiles.clear()
+                state.kafka_metrics["messages_sent"] = 0
+                state.kafka_metrics["messages_per_sec"] = 0.0
                 await broadcast({"type": "metrics_reset"})
                 
     except WebSocketDisconnect:
@@ -274,6 +455,22 @@ async def run_simulation(event_count: int, attack_percentage: int, duration_seco
             await broadcast(result)
             
             # Broadcast updated metrics
+            confluent_metrics_data = None
+            if state.confluent_metrics_client:
+                try:
+                    cm = await state.confluent_metrics_client.get_cluster_metrics()
+                    confluent_metrics_data = cm.to_dict()
+                except Exception:
+                    pass
+            
+            ksqldb_summaries = []
+            if state.ksqldb_client and i % 5 == 0:  # Query every 5 events to reduce load
+                try:
+                    summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
+                    ksqldb_summaries = [s.to_dict() for s in summaries]
+                except Exception:
+                    pass
+            
             await broadcast({
                 "type": "metrics",
                 "data": {
@@ -290,7 +487,12 @@ async def run_simulation(event_count: int, attack_percentage: int, duration_seco
                     "messages_per_sec": round(state.kafka_metrics["messages_per_sec"], 1),
                     "connection_status": state.kafka_metrics["connection_status"],
                 },
+                "risk_trend": list(state.risk_trend),
+                "top_actors": get_top_risky_actors(5),
                 "progress": round((i + 1) / event_count * 100, 1),
+                "confluent_status": state.confluent_status,
+                "confluent_metrics": confluent_metrics_data,
+                "ksqldb_summaries": ksqldb_summaries,
             })
             
             await asyncio.sleep(delay)
@@ -325,6 +527,39 @@ async def get_metrics():
     }
 
 
+@app.get("/api/confluent-status")
+async def get_confluent_status():
+    """Get Confluent advanced features status."""
+    return {
+        "schema_registry": state.confluent_status["schema_registry"],
+        "ksqldb": state.confluent_status["ksqldb"],
+        "metrics_api": state.confluent_status["metrics_api"],
+        "all_connected": all([
+            state.confluent_status["schema_registry"]["connected"],
+            state.confluent_status["ksqldb"]["connected"],
+            state.confluent_status["metrics_api"]["connected"],
+        ])
+    }
+
+
+@app.get("/api/confluent-metrics")
+async def get_confluent_metrics():
+    """Get Confluent Cloud cluster metrics."""
+    if state.confluent_metrics_client:
+        metrics = await state.confluent_metrics_client.get_cluster_metrics()
+        return metrics.to_dict()
+    return {"status": "unavailable"}
+
+
+@app.get("/api/ksqldb/user-risk-summaries")
+async def get_ksqldb_summaries():
+    """Get user risk summaries from ksqlDB."""
+    if state.ksqldb_client:
+        summaries = await state.ksqldb_client.get_user_risk_summaries(limit=10)
+        return [s.to_dict() for s in summaries]
+    return []
+
+
 def get_dashboard_html() -> str:
     """Return the dashboard HTML."""
     return """
@@ -335,6 +570,7 @@ def get_dashboard_html() -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Risk Gatekeeper</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .event-card { animation: slideIn 0.3s ease-out; }
         @keyframes slideIn {
@@ -346,6 +582,14 @@ def get_dashboard_html() -> str:
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+        .block-flash { animation: blockFlash 0.5s ease-out; }
+        @keyframes blockFlash {
+            0% { background-color: rgba(239, 68, 68, 0.5); }
+            100% { background-color: transparent; }
+        }
+        .risk-high { color: #ef4444; }
+        .risk-medium { color: #f59e0b; }
+        .risk-low { color: #22c55e; }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -378,7 +622,7 @@ def get_dashboard_html() -> str:
                 <div class="text-2xl font-bold text-orange-400" id="metric-escalated">0</div>
                 <div class="text-xs text-gray-400">Escalated</div>
             </div>
-            <div class="bg-gray-800 rounded-lg p-4 text-center">
+            <div class="bg-gray-800 rounded-lg p-4 text-center" id="blocked-card">
                 <div class="text-2xl font-bold text-red-400" id="metric-blocked">0</div>
                 <div class="text-xs text-gray-400">Blocked</div>
             </div>
@@ -432,11 +676,86 @@ def get_dashboard_html() -> str:
             </div>
         </div>
 
-        <!-- Live Event Feed -->
+        <!-- Risk Trend Chart + Top Risky Actors -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            <!-- Risk Trend Chart -->
+            <div class="lg:col-span-2 bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">📈 Risk Score Trend</h2>
+                <div class="h-64">
+                    <canvas id="risk-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Top Risky Actors -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">🎯 Top Risky Actors</h2>
+                <div id="risky-actors" class="space-y-3">
+                    <p class="text-gray-500 text-center py-4">No data yet...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Event Feed + Decision Explanation -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Live Event Feed -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Live Event Feed</h2>
+                <div id="event-feed" class="space-y-2 max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-8">Events will appear here when simulation starts...</p>
+                </div>
+            </div>
+            
+            <!-- Decision Explanation Panel -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">🧠 AI Decision Explanation</h2>
+                <div id="explanation-panel" class="bg-gray-700 rounded-lg p-4 min-h-48">
+                    <p class="text-gray-500 text-center py-8">Click on an event to see the AI's reasoning...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confluent Integration Status Badge -->
         <div class="bg-gray-800 rounded-lg p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Live Event Feed</h2>
-            <div id="event-feed" class="space-y-2 max-h-96 overflow-y-auto">
-                <p class="text-gray-500 text-center py-8">Events will appear here when simulation starts...</p>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">🔗 Confluent Cloud Integration</h2>
+                <div id="full-integration-badge" class="hidden px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full text-sm font-semibold">
+                    ✨ Full Integration Active
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Schema Registry Status -->
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-400 text-sm">Schema Registry</span>
+                        <span id="sr-status" class="px-2 py-1 rounded text-xs font-semibold bg-gray-600">Checking...</span>
+                    </div>
+                    <div class="text-lg font-bold text-blue-400" id="sr-format">JSON</div>
+                    <div class="text-xs text-gray-500 mt-1" title="Schema Registry ensures data consistency across all producers and consumers">
+                        Data serialization format
+                    </div>
+                </div>
+                <!-- ksqlDB Status -->
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-400 text-sm">ksqlDB</span>
+                        <span id="ksql-status" class="px-2 py-1 rounded text-xs font-semibold bg-gray-600">Checking...</span>
+                    </div>
+                    <div class="text-lg font-bold text-purple-400" id="ksql-streams">-</div>
+                    <div class="text-xs text-gray-500 mt-1" title="ksqlDB provides real-time stream processing with SQL">
+                        Stream processing
+                    </div>
+                </div>
+                <!-- Metrics API Status -->
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-400 text-sm">Metrics API</span>
+                        <span id="metrics-api-status" class="px-2 py-1 rounded text-xs font-semibold bg-gray-600">Checking...</span>
+                    </div>
+                    <div class="text-lg font-bold text-cyan-400" id="cluster-id">-</div>
+                    <div class="text-xs text-gray-500 mt-1" title="Real-time cluster metrics from Confluent Cloud">
+                        Cluster monitoring
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -460,6 +779,37 @@ def get_dashboard_html() -> str:
                     <div class="text-3xl font-bold text-purple-400"><span id="kafka-rate">0</span>/s</div>
                     <div class="text-gray-400 text-sm">Throughput</div>
                     <div class="text-xs text-gray-500 mt-1">Messages per second</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ksqlDB Analytics Panel -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">⚡ ksqlDB Real-Time Analytics</h2>
+            <div id="ksqldb-panel">
+                <div class="text-gray-500 text-center py-4" id="ksqldb-placeholder">
+                    ksqlDB analytics will appear during simulation...
+                </div>
+                <div id="ksqldb-summaries" class="hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-700">
+                                    <th class="text-left py-2">Actor</th>
+                                    <th class="text-center py-2">Events</th>
+                                    <th class="text-center py-2">Avg Risk</th>
+                                    <th class="text-center py-2">Max Risk</th>
+                                    <th class="text-center py-2">High Risk</th>
+                                    <th class="text-center py-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ksqldb-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-3">
+                        📊 5-minute tumbling window aggregation via ksqlDB
+                    </div>
                 </div>
             </div>
         </div>
@@ -491,6 +841,43 @@ def get_dashboard_html() -> str:
         let ws;
         let eventFeed = document.getElementById('event-feed');
         let isFirstEvent = true;
+        let riskChart;
+        let lastBlockedCount = 0;
+
+        // Initialize Chart
+        function initChart() {
+            const ctx = document.getElementById('risk-chart').getContext('2d');
+            riskChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Risk Score',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: { display: false }
+                    },
+                    plugins: { legend: { display: false } },
+                    animation: { duration: 0 }
+                }
+            });
+        }
 
         function connect() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -515,6 +902,10 @@ def get_dashboard_html() -> str:
             if (data.type === 'metrics') {
                 updateMetrics(data.data);
                 updateKafkaMetrics(data.kafka);
+                updateRiskChart(data.risk_trend);
+                updateRiskyActors(data.top_actors);
+                updateConfluentStatus(data.confluent_status);
+                updateKsqlDBSummaries(data.ksqldb_summaries);
                 if (data.progress !== undefined) {
                     document.getElementById('progress-bar').style.width = data.progress + '%';
                 }
@@ -533,8 +924,91 @@ def get_dashboard_html() -> str:
             } else if (data.type === 'metrics_reset') {
                 document.getElementById('progress-bar').style.width = '0%';
                 eventFeed.innerHTML = '<p class="text-gray-500 text-center py-8">Events will appear here when simulation starts...</p>';
+                document.getElementById('explanation-panel').innerHTML = '<p class="text-gray-500 text-center py-8">Click on an event to see the AI\\'s reasoning...</p>';
+                document.getElementById('risky-actors').innerHTML = '<p class="text-gray-500 text-center py-4">No data yet...</p>';
+                document.getElementById('ksqldb-summaries').classList.add('hidden');
+                document.getElementById('ksqldb-placeholder').classList.remove('hidden');
                 isFirstEvent = true;
+                lastBlockedCount = 0;
+                if (riskChart) {
+                    riskChart.data.labels = [];
+                    riskChart.data.datasets[0].data = [];
+                    riskChart.update();
+                }
             }
+        }
+
+        function updateConfluentStatus(status) {
+            if (!status) return;
+            
+            // Schema Registry
+            const srStatus = document.getElementById('sr-status');
+            const srFormat = document.getElementById('sr-format');
+            if (status.schema_registry.connected) {
+                srStatus.textContent = 'Connected';
+                srStatus.className = 'px-2 py-1 rounded text-xs font-semibold bg-green-600';
+                srFormat.textContent = status.schema_registry.format || 'Avro';
+            } else {
+                srStatus.textContent = 'Offline';
+                srStatus.className = 'px-2 py-1 rounded text-xs font-semibold bg-gray-600';
+            }
+            
+            // ksqlDB
+            const ksqlStatus = document.getElementById('ksql-status');
+            const ksqlStreams = document.getElementById('ksql-streams');
+            if (status.ksqldb.connected) {
+                ksqlStatus.textContent = 'Connected';
+                ksqlStatus.className = 'px-2 py-1 rounded text-xs font-semibold bg-green-600';
+                ksqlStreams.textContent = status.ksqldb.streams_ready ? 'Streams Ready' : 'Initializing';
+            } else {
+                ksqlStatus.textContent = 'Offline';
+                ksqlStatus.className = 'px-2 py-1 rounded text-xs font-semibold bg-gray-600';
+                ksqlStreams.textContent = '-';
+            }
+            
+            // Metrics API
+            const metricsStatus = document.getElementById('metrics-api-status');
+            const clusterId = document.getElementById('cluster-id');
+            if (status.metrics_api.connected) {
+                metricsStatus.textContent = 'Connected';
+                metricsStatus.className = 'px-2 py-1 rounded text-xs font-semibold bg-green-600';
+                clusterId.textContent = status.metrics_api.cluster_id || 'Active';
+            } else {
+                metricsStatus.textContent = 'Offline';
+                metricsStatus.className = 'px-2 py-1 rounded text-xs font-semibold bg-gray-600';
+                clusterId.textContent = '-';
+            }
+            
+            // Full integration badge
+            const badge = document.getElementById('full-integration-badge');
+            if (status.schema_registry.connected && status.ksqldb.connected && status.metrics_api.connected) {
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function updateKsqlDBSummaries(summaries) {
+            if (!summaries || summaries.length === 0) return;
+            
+            document.getElementById('ksqldb-placeholder').classList.add('hidden');
+            document.getElementById('ksqldb-summaries').classList.remove('hidden');
+            
+            const tbody = document.getElementById('ksqldb-table-body');
+            tbody.innerHTML = summaries.map(s => {
+                const riskClass = s.avg_risk >= 0.6 ? 'text-red-400' : s.avg_risk >= 0.4 ? 'text-yellow-400' : 'text-green-400';
+                const flagged = s.is_flagged ? '<span class="text-red-400">🚨 Flagged</span>' : '<span class="text-green-400">✓ Normal</span>';
+                return `
+                    <tr class="border-b border-gray-700">
+                        <td class="py-2 font-mono text-sm">${s.actor_id}</td>
+                        <td class="py-2 text-center">${s.event_count}</td>
+                        <td class="py-2 text-center ${riskClass}">${(s.avg_risk * 100).toFixed(0)}%</td>
+                        <td class="py-2 text-center">${(s.max_risk * 100).toFixed(0)}%</td>
+                        <td class="py-2 text-center">${s.high_risk_count}</td>
+                        <td class="py-2 text-center">${flagged}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function updateMetrics(metrics) {
@@ -545,6 +1019,13 @@ def get_dashboard_html() -> str:
             document.getElementById('metric-escalated').textContent = metrics.escalated;
             document.getElementById('metric-blocked').textContent = metrics.blocked;
             document.getElementById('metric-latency').textContent = metrics.avg_latency_ms.toFixed(1);
+            
+            if (metrics.blocked > lastBlockedCount) {
+                const card = document.getElementById('blocked-card');
+                card.classList.add('block-flash');
+                setTimeout(() => card.classList.remove('block-flash'), 500);
+                lastBlockedCount = metrics.blocked;
+            }
         }
 
         function updateKafkaMetrics(kafka) {
@@ -565,6 +1046,71 @@ def get_dashboard_html() -> str:
             }
         }
 
+        function updateRiskChart(riskTrend) {
+            if (!riskTrend || !riskChart) return;
+            const labels = riskTrend.map((_, i) => i);
+            const data = riskTrend.map(r => r.risk_score);
+            riskChart.data.labels = labels;
+            riskChart.data.datasets[0].data = data;
+            const avgRisk = data.length > 0 ? data.reduce((a, b) => a + b, 0) / data.length : 0;
+            if (avgRisk >= 0.6) {
+                riskChart.data.datasets[0].borderColor = '#ef4444';
+                riskChart.data.datasets[0].backgroundColor = 'rgba(239, 68, 68, 0.1)';
+            } else if (avgRisk >= 0.4) {
+                riskChart.data.datasets[0].borderColor = '#f59e0b';
+                riskChart.data.datasets[0].backgroundColor = 'rgba(245, 158, 11, 0.1)';
+            } else {
+                riskChart.data.datasets[0].borderColor = '#22c55e';
+                riskChart.data.datasets[0].backgroundColor = 'rgba(34, 197, 94, 0.1)';
+            }
+            riskChart.update();
+        }
+
+        function updateRiskyActors(actors) {
+            if (!actors || actors.length === 0) return;
+            const container = document.getElementById('risky-actors');
+            container.innerHTML = actors.map((actor, i) => {
+                const riskClass = actor.avg_risk >= 0.6 ? 'risk-high' : actor.avg_risk >= 0.4 ? 'risk-medium' : 'risk-low';
+                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
+                return `
+                    <div class="bg-gray-600 rounded p-3 flex justify-between items-center">
+                        <div>
+                            <span class="mr-2">${medal}</span>
+                            <span class="font-mono text-sm">${actor.actor_id}</span>
+                            <div class="text-xs text-gray-400">${actor.events} events, ${actor.blocked} blocked</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold ${riskClass}">${(actor.avg_risk * 100).toFixed(0)}%</div>
+                            <div class="text-xs text-gray-400">avg risk</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showExplanation(data) {
+            const panel = document.getElementById('explanation-panel');
+            const decision = data.decision.decision;
+            const decisionColors = { 'allow': 'text-green-400', 'throttle': 'text-yellow-400', 'escalate': 'text-orange-400', 'block': 'text-red-400' };
+            const decisionIcons = { 'allow': '✅', 'throttle': '⏱️', 'escalate': '⚠️', 'block': '🚫' };
+            panel.innerHTML = `
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-2xl">${decisionIcons[decision]}</span>
+                        <span class="text-xl font-bold ${decisionColors[decision]}">${decision.toUpperCase()}</span>
+                    </div>
+                    <div class="text-sm text-gray-400">
+                        Actor: <span class="font-mono">${data.event.actor_id}</span> | 
+                        Action: ${data.event.action} | Latency: ${data.latency_ms}ms
+                    </div>
+                </div>
+                <div class="border-t border-gray-600 pt-4">
+                    <h4 class="text-sm font-semibold text-gray-300 mb-2">Analysis:</h4>
+                    <pre class="text-sm text-gray-300 whitespace-pre-wrap">${data.explanation || 'No explanation available'}</pre>
+                </div>
+            `;
+        }
+
         function addEventToFeed(data) {
             if (isFirstEvent) {
                 eventFeed.innerHTML = '';
@@ -577,19 +1123,14 @@ def get_dashboard_html() -> str:
                 'escalate': 'border-orange-500 bg-orange-900/20',
                 'block': 'border-red-500 bg-red-900/20'
             };
-            const decisionIcons = {
-                'allow': '✅',
-                'throttle': '⏱️',
-                'escalate': '⚠️',
-                'block': '🚫'
-            };
+            const decisionIcons = { 'allow': '✅', 'throttle': '⏱️', 'escalate': '⚠️', 'block': '🚫' };
 
             const decision = data.decision.decision;
             const colorClass = decisionColors[decision] || 'border-gray-500';
             const icon = decisionIcons[decision] || '❓';
 
             const card = document.createElement('div');
-            card.className = `event-card border-l-4 ${colorClass} p-3 rounded`;
+            card.className = `event-card border-l-4 ${colorClass} p-3 rounded cursor-pointer hover:bg-gray-700/50 transition`;
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -606,10 +1147,11 @@ def get_dashboard_html() -> str:
                     ${data.signal.risk_factors.slice(0, 2).join(', ') || 'No risk factors'}
                 </div>
             `;
+            
+            card.onclick = () => showExplanation(data);
+            if (decision === 'block') showExplanation(data);
 
             eventFeed.insertBefore(card, eventFeed.firstChild);
-            
-            // Keep only last 50 events in DOM
             while (eventFeed.children.length > 50) {
                 eventFeed.removeChild(eventFeed.lastChild);
             }
@@ -645,7 +1187,8 @@ def get_dashboard_html() -> str:
             ws.send(JSON.stringify({ action: 'reset_metrics' }));
         };
 
-        // Connect on load
+        // Initialize on load
+        initChart();
         connect();
     </script>
 </body>

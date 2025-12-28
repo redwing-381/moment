@@ -19,6 +19,12 @@ from confluent_kafka import Producer, KafkaError, KafkaException
 from ai_risk_gatekeeper.models.events import EnterpriseActionEvent
 from ai_risk_gatekeeper.config.settings import config_manager, KafkaConfig
 
+# Optional import for Avro serialization
+try:
+    from ai_risk_gatekeeper.agents.schema_registry import AvroSerializer
+except ImportError:
+    AvroSerializer = None
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +74,8 @@ class EventProducer:
     def __init__(
         self,
         kafka_config: Optional[KafkaConfig] = None,
-        generator_config: Optional[EventGeneratorConfig] = None
+        generator_config: Optional[EventGeneratorConfig] = None,
+        avro_serializer: Optional['AvroSerializer'] = None
     ):
         """
         Initialize the Event Producer.
@@ -76,13 +83,16 @@ class EventProducer:
         Args:
             kafka_config: Kafka configuration (uses global config if not provided)
             generator_config: Event generation configuration
+            avro_serializer: Optional Avro serializer for Schema Registry integration
         """
         self._kafka_config = kafka_config
         self._generator_config = generator_config or EventGeneratorConfig()
+        self._avro_serializer = avro_serializer
         self._producer: Optional[Producer] = None
         self._delivery_callbacks: list = []
         self._events_produced = 0
         self._events_failed = 0
+        self._using_avro = avro_serializer is not None
     
     @property
     def kafka_config(self) -> KafkaConfig:
@@ -249,14 +259,21 @@ class EventProducer:
         start_time = time.perf_counter()
         
         try:
-            # Serialize event to JSON
-            event_json = event.to_json()
+            # Serialize event - use Avro if available, otherwise JSON
+            if self._avro_serializer is not None:
+                try:
+                    event_data = self._avro_serializer.serialize(event.to_dict())
+                except Exception as avro_err:
+                    logger.warning(f"Avro serialization failed, falling back to JSON: {avro_err}")
+                    event_data = event.to_json()
+            else:
+                event_data = event.to_json()
             
             # Produce message with actor_id as key for partitioning
             self._producer.produce(
                 topic=target_topic,
                 key=event.actor_id,
-                value=event_json,
+                value=event_data,
                 callback=self._delivery_callback
             )
             
@@ -355,8 +372,14 @@ class EventProducer:
         """Get producer statistics."""
         return {
             "events_produced": self._events_produced,
-            "events_failed": self._events_failed
+            "events_failed": self._events_failed,
+            "using_avro": self._using_avro
         }
+    
+    @property
+    def using_avro(self) -> bool:
+        """Check if Avro serialization is enabled."""
+        return self._using_avro
 
 
 def create_event_producer() -> EventProducer:
