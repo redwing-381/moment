@@ -27,6 +27,14 @@ from ai_risk_gatekeeper.agents.action_agent import (
     ActionAgent,
     create_action_agent,
 )
+from ai_risk_gatekeeper.agents.frequency_tracker import (
+    FrequencyTracker,
+    get_frequency_tracker,
+)
+from ai_risk_gatekeeper.agents.kafka_metrics import (
+    KafkaMetricsTracker,
+    get_kafka_metrics,
+)
 
 __all__ = [
     "EventProducer",
@@ -40,4 +48,8 @@ __all__ = [
     "create_decision_agent",
     "ActionAgent",
     "create_action_agent",
+    "FrequencyTracker",
+    "get_frequency_tracker",
+    "KafkaMetricsTracker",
+    "get_kafka_metrics",
 ]

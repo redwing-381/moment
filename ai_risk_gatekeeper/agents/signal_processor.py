@@ -3,6 +3,8 @@ Signal Processing Agent for the AI Risk Gatekeeper system.
 
 This agent consumes enterprise action events, extracts risk indicators,
 calculates risk scores using deterministic logic, and publishes risk signals.
+
+Key Confluent Feature: Real-time windowed frequency aggregation
 """
 
 import logging
@@ -15,6 +17,7 @@ from confluent_kafka import Consumer, Producer, KafkaError
 
 from ai_risk_gatekeeper.models.events import EnterpriseActionEvent, RiskSignal
 from ai_risk_gatekeeper.config.settings import config_manager, KafkaConfig
+from ai_risk_gatekeeper.agents.frequency_tracker import get_frequency_tracker
 
 
 logger = logging.getLogger(__name__)
@@ -68,10 +71,13 @@ class SignalProcessor:
     def __init__(
         self,
         kafka_config: Optional[KafkaConfig] = None,
-        scoring_config: Optional[RiskScoringConfig] = None
+        scoring_config: Optional[RiskScoringConfig] = None,
+        use_real_frequency: bool = True
     ):
         self._kafka_config = kafka_config
         self._scoring_config = scoring_config or RiskScoringConfig()
+        self._use_real_frequency = use_real_frequency
+        self._frequency_tracker = get_frequency_tracker() if use_real_frequency else None
         self._consumer: Optional[Consumer] = None
         self._producer: Optional[Producer] = None
         self._running = False
@@ -132,12 +138,13 @@ class SignalProcessor:
             self._consumer = None
         logger.info("Signal Processor disconnected")
     
-    def calculate_risk_score(self, event: EnterpriseActionEvent) -> float:
+    def calculate_risk_score(self, event: EnterpriseActionEvent, real_frequency: Optional[int] = None) -> float:
         """
         Calculate risk score using deterministic logic.
         
         Args:
             event: The enterprise action event
+            real_frequency: Real-time frequency from windowed aggregation (overrides event.frequency_last_60s)
             
         Returns:
             float: Risk score between 0.0 and 1.0
@@ -145,12 +152,15 @@ class SignalProcessor:
         cfg = self._scoring_config
         score = 0.0
         
+        # Use real frequency if available, otherwise fall back to event's frequency
+        frequency = real_frequency if real_frequency is not None else event.frequency_last_60s
+        
         # Frequency score
-        if event.frequency_last_60s > cfg.high_frequency_threshold:
+        if frequency > cfg.high_frequency_threshold:
             freq_score = 1.0
-        elif event.frequency_last_60s > cfg.elevated_frequency_threshold:
+        elif frequency > cfg.elevated_frequency_threshold:
             freq_score = 0.6
-        elif event.frequency_last_60s > cfg.normal_frequency_max:
+        elif frequency > cfg.normal_frequency_max:
             freq_score = 0.3
         else:
             freq_score = 0.0
@@ -172,12 +182,13 @@ class SignalProcessor:
         
         return min(score, 1.0)
     
-    def identify_risk_factors(self, event: EnterpriseActionEvent) -> List[str]:
+    def identify_risk_factors(self, event: EnterpriseActionEvent, real_frequency: Optional[int] = None) -> List[str]:
         """
         Identify specific risk factors from the event.
         
         Args:
             event: The enterprise action event
+            real_frequency: Real-time frequency from windowed aggregation
             
         Returns:
             List[str]: List of identified risk factors
@@ -185,11 +196,14 @@ class SignalProcessor:
         cfg = self._scoring_config
         factors = []
         
+        # Use real frequency if available
+        frequency = real_frequency if real_frequency is not None else event.frequency_last_60s
+        
         # Check frequency
-        if event.frequency_last_60s > cfg.high_frequency_threshold:
-            factors.append("high_frequency_activity")
-        elif event.frequency_last_60s > cfg.elevated_frequency_threshold:
-            factors.append("elevated_frequency")
+        if frequency > cfg.high_frequency_threshold:
+            factors.append(f"high_frequency_activity ({frequency}/min)")
+        elif frequency > cfg.elevated_frequency_threshold:
+            factors.append(f"elevated_frequency ({frequency}/min)")
         
         # Check geo change
         if event.geo_change:
@@ -217,6 +231,8 @@ class SignalProcessor:
         """
         Process an event and generate a risk signal.
         
+        Uses real-time windowed frequency aggregation when available.
+        
         Args:
             event: The enterprise action event
             
@@ -225,8 +241,16 @@ class SignalProcessor:
         """
         start_time = time.perf_counter()
         
-        risk_score = self.calculate_risk_score(event)
-        risk_factors = self.identify_risk_factors(event)
+        # Get real-time frequency from windowed aggregation
+        real_frequency = None
+        if self._use_real_frequency and self._frequency_tracker:
+            real_frequency = self._frequency_tracker.record_event(
+                event.actor_id, 
+                event.timestamp / 1000.0  # Convert ms to seconds
+            )
+        
+        risk_score = self.calculate_risk_score(event, real_frequency)
+        risk_factors = self.identify_risk_factors(event, real_frequency)
         
         signal = RiskSignal(
             actor_id=event.actor_id,
@@ -238,7 +262,8 @@ class SignalProcessor:
         )
         
         processing_time = (time.perf_counter() - start_time) * 1000
-        logger.debug(f"Processed event in {processing_time:.2f}ms, score={risk_score:.2f}")
+        freq_info = f"real_freq={real_frequency}" if real_frequency else f"simulated_freq={event.frequency_last_60s}"
+        logger.debug(f"Processed event in {processing_time:.2f}ms, score={risk_score:.2f}, {freq_info}")
         
         return signal
     

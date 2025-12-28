@@ -50,6 +50,13 @@ class AppState:
             "avg_latency_ms": 0,
             "latencies": deque(maxlen=100),
         }
+        self.kafka_metrics = {
+            "messages_sent": 0,
+            "messages_per_sec": 0.0,
+            "last_send_times": deque(maxlen=100),
+            "connection_status": "connecting",
+            "topics_used": set(),
+        }
         self.simulation_running = False
 
 
@@ -62,11 +69,15 @@ async def lifespan(app: FastAPI):
     try:
         state.producer = EventProducer()
         state.producer.connect()
-        state.processor = SignalProcessor()
+        state.kafka_metrics["connection_status"] = "connected"
+        state.kafka_metrics["topics_used"].add("enterprise-action-events")
+        # Disable real frequency tracking to avoid threading issues
+        state.processor = SignalProcessor(use_real_frequency=False)
         state.decision_agent = DecisionAgent()
         state.decision_agent.connect()
         print("✓ All agents connected")
     except Exception as e:
+        state.kafka_metrics["connection_status"] = "error"
         print(f"Warning: Could not connect agents: {e}")
     
     yield
@@ -108,8 +119,18 @@ async def process_single_event(event: EnterpriseActionEvent, use_ai: bool = Fals
     """Process a single event through the pipeline."""
     start_time = time.perf_counter()
     
-    # Publish to Kafka
-    state.producer.publish_event(event)
+    # Publish to Kafka (fire and forget - don't wait)
+    try:
+        state.producer.publish_event(event)
+        # Track Kafka metrics
+        state.kafka_metrics["messages_sent"] += 1
+        state.kafka_metrics["last_send_times"].append(time.time())
+        # Calculate messages per second (last 10 seconds)
+        now = time.time()
+        recent = [t for t in state.kafka_metrics["last_send_times"] if now - t < 10]
+        state.kafka_metrics["messages_per_sec"] = len(recent) / 10.0
+    except Exception:
+        pass  # Don't block on Kafka errors
     state.metrics["events_produced"] += 1
     
     # Process signal
@@ -194,12 +215,12 @@ async def websocket_endpoint(websocket: WebSocket):
             msg = json.loads(data)
             
             if msg.get("action") == "start_simulation":
-                await run_simulation(
+                asyncio.create_task(run_simulation(
                     event_count=msg.get("event_count", 50),
                     attack_percentage=msg.get("attack_percentage", 20),
                     duration_seconds=msg.get("duration_seconds", 10),
                     use_ai=msg.get("use_ai", False),
-                )
+                ))
             elif msg.get("action") == "stop_simulation":
                 state.simulation_running = False
             elif msg.get("action") == "reset_metrics":
@@ -245,31 +266,42 @@ async def run_simulation(event_count: int, attack_percentage: int, duration_seco
         if not state.simulation_running:
             break
         
-        event = state.producer.generate_event(pattern=pattern)
-        result = await process_single_event(event, use_ai=use_ai)
-        
-        # Broadcast event result
-        await broadcast(result)
-        
-        # Broadcast updated metrics
-        await broadcast({
-            "type": "metrics",
-            "data": {
-                "events_produced": state.metrics["events_produced"],
-                "decisions_made": state.metrics["decisions_made"],
-                "blocked": state.metrics["blocked"],
-                "allowed": state.metrics["allowed"],
-                "escalated": state.metrics["escalated"],
-                "throttled": state.metrics["throttled"],
-                "avg_latency_ms": round(state.metrics["avg_latency_ms"], 2),
-            },
-            "progress": round((i + 1) / event_count * 100, 1),
-        })
-        
-        await asyncio.sleep(delay)
+        try:
+            event = state.producer.generate_event(pattern=pattern)
+            result = await process_single_event(event, use_ai=use_ai)
+            
+            # Broadcast event result
+            await broadcast(result)
+            
+            # Broadcast updated metrics
+            await broadcast({
+                "type": "metrics",
+                "data": {
+                    "events_produced": state.metrics["events_produced"],
+                    "decisions_made": state.metrics["decisions_made"],
+                    "blocked": state.metrics["blocked"],
+                    "allowed": state.metrics["allowed"],
+                    "escalated": state.metrics["escalated"],
+                    "throttled": state.metrics["throttled"],
+                    "avg_latency_ms": round(state.metrics["avg_latency_ms"], 2),
+                },
+                "kafka": {
+                    "messages_sent": state.kafka_metrics["messages_sent"],
+                    "messages_per_sec": round(state.kafka_metrics["messages_per_sec"], 1),
+                    "connection_status": state.kafka_metrics["connection_status"],
+                },
+                "progress": round((i + 1) / event_count * 100, 1),
+            })
+            
+            await asyncio.sleep(delay)
+        except Exception as e:
+            print(f"Error processing event {i}: {e}")
     
     state.simulation_running = False
-    state.producer.flush(timeout=5)
+    try:
+        state.producer.flush(timeout=5)
+    except Exception:
+        pass
     await broadcast({"type": "simulation_complete"})
 
 
@@ -401,10 +433,34 @@ def get_dashboard_html() -> str:
         </div>
 
         <!-- Live Event Feed -->
-        <div class="bg-gray-800 rounded-lg p-6">
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
             <h2 class="text-xl font-semibold mb-4">Live Event Feed</h2>
             <div id="event-feed" class="space-y-2 max-h-96 overflow-y-auto">
                 <p class="text-gray-500 text-center py-8">Events will appear here when simulation starts...</p>
+            </div>
+        </div>
+
+        <!-- Kafka Metrics Panel -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">📊 Confluent Kafka Metrics</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-400 text-sm">Connection Status</span>
+                        <span id="kafka-status" class="px-2 py-1 rounded text-xs font-semibold bg-green-600">Connected</span>
+                    </div>
+                    <div class="text-xs text-gray-500">Confluent Cloud (US-East1)</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-3xl font-bold text-blue-400" id="kafka-messages">0</div>
+                    <div class="text-gray-400 text-sm">Messages to Kafka</div>
+                    <div class="text-xs text-gray-500 mt-1">Topic: enterprise-action-events</div>
+                </div>
+                <div class="bg-gray-700 rounded-lg p-4">
+                    <div class="text-3xl font-bold text-purple-400"><span id="kafka-rate">0</span>/s</div>
+                    <div class="text-gray-400 text-sm">Throughput</div>
+                    <div class="text-xs text-gray-500 mt-1">Messages per second</div>
+                </div>
             </div>
         </div>
 
@@ -458,6 +514,7 @@ def get_dashboard_html() -> str:
         function handleMessage(data) {
             if (data.type === 'metrics') {
                 updateMetrics(data.data);
+                updateKafkaMetrics(data.kafka);
                 if (data.progress !== undefined) {
                     document.getElementById('progress-bar').style.width = data.progress + '%';
                 }
@@ -488,6 +545,24 @@ def get_dashboard_html() -> str:
             document.getElementById('metric-escalated').textContent = metrics.escalated;
             document.getElementById('metric-blocked').textContent = metrics.blocked;
             document.getElementById('metric-latency').textContent = metrics.avg_latency_ms.toFixed(1);
+        }
+
+        function updateKafkaMetrics(kafka) {
+            if (!kafka) return;
+            document.getElementById('kafka-messages').textContent = kafka.messages_sent;
+            document.getElementById('kafka-rate').textContent = kafka.messages_per_sec;
+            
+            const statusEl = document.getElementById('kafka-status');
+            if (kafka.connection_status === 'connected') {
+                statusEl.textContent = 'Connected';
+                statusEl.className = 'px-2 py-1 rounded text-xs font-semibold bg-green-600';
+            } else if (kafka.connection_status === 'error') {
+                statusEl.textContent = 'Error';
+                statusEl.className = 'px-2 py-1 rounded text-xs font-semibold bg-red-600';
+            } else {
+                statusEl.textContent = 'Connecting...';
+                statusEl.className = 'px-2 py-1 rounded text-xs font-semibold bg-yellow-600';
+            }
         }
 
         function addEventToFeed(data) {
