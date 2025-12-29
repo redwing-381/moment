@@ -52,14 +52,37 @@ async def process_single_event(event: EnterpriseActionEvent, use_ai: bool = Fals
     # Process signal
     signal = state.processor.process_event(event)
     
-    # Make decision
-    if use_ai and state.decision_agent:
+    # Make decision using hybrid engine if available
+    if state.hybrid_engine:
+        from ai_risk_gatekeeper.models.events import DecisionMode
+        
+        # Set mode based on use_ai flag
+        if use_ai:
+            # Use current mode (HYBRID or FULL_AI)
+            if state.decision_mode == DecisionMode.FAST:
+                state.hybrid_engine.set_mode(DecisionMode.HYBRID)
+        else:
+            # Force FAST mode when AI is disabled
+            state.hybrid_engine.set_mode(DecisionMode.FAST)
+        
+        decision_result_obj = await state.hybrid_engine.decide(signal)
+        decision_result = {
+            "decision": decision_result_obj.decision,
+            "confidence": decision_result_obj.confidence,
+            "reason": decision_result_obj.reason,
+        }
+        latency_ms = decision_result_obj.latency_ms
+        decision_source = decision_result_obj.source
+    elif use_ai and state.decision_agent:
         decision_result = state.decision_agent.query_ai(signal)
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        decision_source = "ai"
     else:
         decision_result = state.decision_agent._fallback_decision(signal, "speed-mode")
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        decision_source = "rule"
     
-    # Calculate latency
-    latency_ms = (time.perf_counter() - start_time) * 1000
+    # Track latency
     state.metrics["latencies"].append(latency_ms)
     state.metrics["avg_latency_ms"] = sum(state.metrics["latencies"]) / len(state.metrics["latencies"])
     
@@ -199,6 +222,8 @@ async def run_attack_scenario(scenario_id: str, use_ai: bool = False):
                 "confluent_status": state.confluent_status,
                 "confluent_metrics": confluent_metrics_data,
                 "scenario_name": scenario.name,
+                "decision_stats": state.get_decision_stats_dict(),
+                "decision_mode": state.decision_mode.value,
             })
             
             await asyncio.sleep(event_config.delay_ms / 1000)
@@ -283,6 +308,8 @@ async def run_simulation(event_count: int, attack_percentage: int, duration_seco
                 "confluent_status": state.confluent_status,
                 "confluent_metrics": confluent_metrics_data,
                 "ksqldb_summaries": ksqldb_summaries,
+                "decision_stats": state.get_decision_stats_dict(),
+                "decision_mode": state.decision_mode.value,
             })
             
             await asyncio.sleep(delay)

@@ -9,6 +9,8 @@ from collections import deque
 from typing import Optional, Any
 from fastapi import WebSocket
 
+from ai_risk_gatekeeper.models.events import DecisionMode
+
 
 class AppState:
     """
@@ -27,6 +29,10 @@ class AppState:
         self.producer: Optional[Any] = None
         self.processor: Optional[Any] = None
         self.decision_agent: Optional[Any] = None
+        self.hybrid_engine: Optional[Any] = None  # HybridDecisionEngine
+        
+        # Decision mode (fast, hybrid, full_ai)
+        self.decision_mode: DecisionMode = DecisionMode.HYBRID
         
         # WebSocket clients
         self.connected_clients: list[WebSocket] = []
@@ -92,6 +98,15 @@ class AppState:
         self.actor_profiles.clear()
         self.kafka_metrics["messages_sent"] = 0
         self.kafka_metrics["messages_per_sec"] = 0.0
+        # Reset hybrid engine stats
+        if self.hybrid_engine:
+            self.hybrid_engine.reset_stats()
+    
+    def set_decision_mode(self, mode: DecisionMode):
+        """Set the decision mode."""
+        self.decision_mode = mode
+        if self.hybrid_engine:
+            self.hybrid_engine.set_mode(mode)
     
     def get_metrics_dict(self) -> dict:
         """Get metrics as a dictionary for API responses."""
@@ -111,6 +126,18 @@ class AppState:
             "messages_sent": self.kafka_metrics["messages_sent"],
             "messages_per_sec": round(self.kafka_metrics["messages_per_sec"], 1),
             "connection_status": self.kafka_metrics["connection_status"],
+        }
+    
+    def get_decision_stats_dict(self) -> dict:
+        """Get decision engine stats as a dictionary."""
+        if self.hybrid_engine:
+            stats = self.hybrid_engine.get_stats()
+            return stats.to_dict()
+        return {
+            "mode": self.decision_mode.value,
+            "rule_decisions": 0,
+            "cache_hits": 0,
+            "ai_decisions": 0,
         }
 
 

@@ -1,8 +1,8 @@
-# 🛡️ Moment - AI Risk Gatekeeper
+# 🛡️ Moment
 
-**Real-time AI-powered Enterprise Security using Confluent Kafka + Google Vertex AI**
+**Real-time AI-powered Enterprise Security Platform**
 
-> Transform reactive security into proactive protection with sub-350ms risk decisions
+> Confluent Kafka + Google Vertex AI for sub-100ms risk decisions
 
 ## 🌐 Live Demo
 
@@ -14,9 +14,9 @@
 
 ```
 Employee Action → Kafka Stream → AI Analysis → Block/Allow/Escalate
-     (10ms)         (50ms)         (200ms)         (100ms)
+     (10ms)         (50ms)         (100ms)        (10ms)
                                                     
-                    Total: <350ms end-to-end
+                    Total: <200ms end-to-end
 ```
 
 ---
@@ -57,16 +57,6 @@ python web_app.py
 # Open http://localhost:8080
 ```
 
-### Terminal Demo
-```bash
-python hackathon_demo.py
-```
-
-### Real-Time Mode
-```bash
-python run_realtime.py --produce --rate 2
-```
-
 ---
 
 ## 🏗️ Architecture
@@ -88,6 +78,12 @@ python run_realtime.py --produce --rate 2
                                              │ AI Gemini │
                                              └───────────┘
 ```
+
+### Confluent Stack
+- **Kafka**: Real-time event streaming
+- **Schema Registry**: Avro serialization
+- **ksqlDB**: Windowed aggregations
+- **Metrics API**: Cluster monitoring
 
 ---
 
@@ -128,30 +124,20 @@ docker run -p 8080:8080 --env-file .env moment
 
 ```
 moment/
-├── web_app.py                # FastAPI web dashboard
-├── hackathon_demo.py         # Terminal demo
-├── run_realtime.py           # Real-time mode
-├── Dockerfile                # Container config
-├── deploy.sh                 # Cloud Run deployment
+├── web_app.py                # FastAPI entry point
 ├── ai_risk_gatekeeper/
+│   ├── web/                  # FastAPI app, routes, WebSocket
 │   ├── agents/               # Event Producer, Signal Processor, Decision Agent
 │   ├── config/               # Settings management
-│   ├── infrastructure/       # Kafka setup
-│   └── models/               # Data schemas
+│   ├── models/               # Data schemas
+│   └── utils/                # Formatters, helpers
+├── static/
+│   ├── css/                  # Dashboard styles
+│   └── js/                   # Dashboard JavaScript
+├── templates/                # HTML templates
 ├── tests/                    # Unit/integration tests
 └── docs/                     # Design documentation
 ```
-
----
-
-## 📈 Performance
-
-| Component | Target | Actual |
-|-----------|--------|--------|
-| Event Publishing | <100ms | ~1ms |
-| Signal Processing | <50ms | ~10ms |
-| AI Decision | <200ms | ~150ms |
-| **End-to-End** | **<350ms** | **~170ms** |
 
 ---
 

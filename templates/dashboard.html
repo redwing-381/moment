@@ -421,6 +421,69 @@
         <div id="page-settings" class="page">
           <div class="card">
             <div class="card-header">
+              <h2 class="card-title">Decision Engine</h2>
+            </div>
+            <div class="card-body">
+              <div class="settings-list">
+                <div class="setting-row">
+                  <div class="setting-info">
+                    <span class="setting-name">Decision Mode</span>
+                    <span class="setting-desc">Control how decisions are made</span>
+                  </div>
+                  <div class="mode-selector">
+                    <label class="mode-option">
+                      <input type="radio" name="decision-mode" value="fast" id="mode-fast">
+                      <span class="mode-label">Fast</span>
+                      <span class="mode-desc">Rules only, 10k+/sec</span>
+                    </label>
+                    <label class="mode-option">
+                      <input type="radio" name="decision-mode" value="hybrid" id="mode-hybrid" checked>
+                      <span class="mode-label">Hybrid</span>
+                      <span class="mode-desc">Rules + AI for gray zone</span>
+                    </label>
+                    <label class="mode-option">
+                      <input type="radio" name="decision-mode" value="full_ai" id="mode-full-ai">
+                      <span class="mode-label">Full AI</span>
+                      <span class="mode-desc">AI for all decisions</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="decision-stats-panel" id="decision-stats-panel">
+                <div class="stats-header">Decision Statistics</div>
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <span class="stat-label">Rule Decisions</span>
+                    <span class="stat-value" id="stat-rule-decisions">0</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Cache Hits</span>
+                    <span class="stat-value" id="stat-cache-hits">0</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">AI Decisions</span>
+                    <span class="stat-value" id="stat-ai-decisions">0</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg Rule Latency</span>
+                    <span class="stat-value"><span id="stat-rule-latency">0</span>ms</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg Cache Latency</span>
+                    <span class="stat-value"><span id="stat-cache-latency">0</span>ms</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">Avg AI Latency</span>
+                    <span class="stat-value"><span id="stat-ai-latency">0</span>ms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
               <h2 class="card-title">Preferences</h2>
             </div>
             <div class="card-body">
@@ -510,6 +573,7 @@
   </div>
 
   <div class="mobile-overlay" id="mobile-overlay"></div>
-  <script src="/static/js/dashboard.js"></script>
+  <div class="toast-container" id="toast-container"></div>
+  <script src="/static/js/dashboard.js?v=4"></script>
 </body>
 </html>

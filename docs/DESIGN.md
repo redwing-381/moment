@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Real-Time AI Risk Gatekeeper is an event-driven system that processes enterprise action events through a pipeline of specialized agents. The system uses Confluent Kafka for real-time streaming and Google Cloud Vertex AI for intelligent risk assessment. The architecture follows a clear separation of concerns with four independent agents communicating exclusively through Kafka topics.
+Moment is an event-driven enterprise security system that processes enterprise action events through a pipeline of specialized agents. The system uses Confluent Kafka for real-time streaming and Google Cloud Vertex AI for intelligent risk assessment. The architecture follows a clear separation of concerns with four independent agents communicating exclusively through Kafka topics.
 
 The system transforms raw enterprise events into actionable risk decisions within 350 milliseconds end-to-end, enabling proactive security measures rather than reactive incident response.
 

@@ -17,7 +17,13 @@ templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def landing(request: Request):
+    """Serve the landing page."""
+    return templates.TemplateResponse("landing.html", {"request": request})
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
     """Serve the main dashboard."""
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
@@ -31,7 +37,21 @@ async def health():
 @router.get("/api/metrics")
 async def get_metrics():
     """Get current metrics."""
-    return state.get_metrics_dict()
+    return {
+        **state.get_metrics_dict(),
+        "decision_stats": state.get_decision_stats_dict(),
+        "decision_mode": state.decision_mode.value,
+    }
+
+
+@router.get("/api/decision-stats")
+async def get_decision_stats():
+    """Get decision engine statistics."""
+    return {
+        "mode": state.decision_mode.value,
+        "stats": state.get_decision_stats_dict(),
+        "cache_stats": state.hybrid_engine.cache_stats if state.hybrid_engine else {},
+    }
 
 
 @router.get("/api/confluent-status")

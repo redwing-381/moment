@@ -35,6 +35,15 @@ from ai_risk_gatekeeper.agents.kafka_metrics import (
     KafkaMetricsTracker,
     get_kafka_metrics,
 )
+from ai_risk_gatekeeper.agents.hybrid_decision_engine import (
+    HybridDecisionEngine,
+)
+from ai_risk_gatekeeper.agents.decision_cache import (
+    DecisionCache,
+)
+from ai_risk_gatekeeper.agents.ai_request_queue import (
+    AIRequestQueue,
+)
 
 __all__ = [
     "EventProducer",
@@ -52,4 +61,7 @@ __all__ = [
     "get_frequency_tracker",
     "KafkaMetricsTracker",
     "get_kafka_metrics",
+    "HybridDecisionEngine",
+    "DecisionCache",
+    "AIRequestQueue",
 ]

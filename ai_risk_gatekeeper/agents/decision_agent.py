@@ -8,11 +8,10 @@ and publishes structured decisions with confidence scores and reasoning.
 import logging
 import time
 import json
+import os
 from typing import Dict, Any, Optional
 
 from confluent_kafka import Consumer, Producer, KafkaError
-from google import genai
-from google.genai import types
 
 from ai_risk_gatekeeper.models.events import RiskSignal, RiskDecision
 from ai_risk_gatekeeper.config.settings import config_manager, KafkaConfig, VertexAIConfig
@@ -49,7 +48,7 @@ Respond ONLY with valid JSON, no other text."""
 
 class DecisionAgent:
     """
-    Makes AI-powered risk decisions using Vertex AI Gemini.
+    Makes AI-powered risk decisions using Google Gemini.
     
     Consumes risk signals, queries the AI model, and publishes
     structured decisions with confidence scores and reasoning.
@@ -65,10 +64,11 @@ class DecisionAgent:
         self._consumer: Optional[Consumer] = None
         self._producer: Optional[Producer] = None
         self._client = None
+        self._model_name = None
         self._running = False
         self._decisions_made = 0
         self._ai_failures = 0
-    
+
     @property
     def kafka_config(self) -> KafkaConfig:
         if self._kafka_config is None:
@@ -115,14 +115,29 @@ class DecisionAgent:
             self._consumer.subscribe([self.kafka_config.risk_signals_topic])
             self._producer = Producer(self._get_producer_config())
             
-            # Initialize Gemini client using Vertex AI
-            self._client = genai.Client(
-                vertexai=True,
-                project=self.vertex_config.project_id,
-                location=self.vertex_config.location
-            )
+            # Initialize Gemini client using the new google.genai package
+            api_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GEMINI_API_KEY")
+            if api_key:
+                from google import genai
+                self._client = genai.Client(api_key=api_key)
+                self._model_name = self.vertex_config.model_name
+                logger.info(f"Decision Agent connected using Google AI API key with model {self._model_name}")
+            else:
+                # Fallback: Try Vertex AI with service account
+                try:
+                    from google import genai
+                    self._client = genai.Client(
+                        vertexai=True,
+                        project=self.vertex_config.project_id,
+                        location=self.vertex_config.location
+                    )
+                    self._model_name = self.vertex_config.model_name
+                    logger.info("Decision Agent connected using Vertex AI")
+                except Exception as e:
+                    logger.warning(f"Vertex AI init failed: {e}, will use fallback decisions")
+                    self._client = None
             
-            logger.info("Decision Agent connected to Kafka and Vertex AI")
+            logger.info("Decision Agent connected to Kafka")
         except Exception as e:
             logger.error(f"Failed to connect Decision Agent: {e}")
             raise
@@ -174,10 +189,10 @@ class DecisionAgent:
         confidence = max(0.0, min(1.0, float(confidence)))
         
         return decision, confidence
-    
+
     def query_ai(self, signal: RiskSignal) -> Dict[str, Any]:
         """
-        Query Vertex AI Gemini for a risk decision.
+        Query Google Gemini for a risk decision.
         
         Args:
             signal: The risk signal to evaluate
@@ -185,11 +200,15 @@ class DecisionAgent:
         Returns:
             Dict with decision, confidence, and reason
         """
+        if self._client is None:
+            return self._fallback_decision(signal, "AI client not initialized")
+        
         prompt = self._build_prompt(signal)
         
         try:
+            from google.genai import types
             response = self._client.models.generate_content(
-                model=self.vertex_config.model_name,
+                model=self._model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     temperature=self.vertex_config.temperature,
@@ -296,7 +315,7 @@ class DecisionAgent:
         )
         
         return decision, total_time
-    
+
     def run(self, max_signals: Optional[int] = None, timeout: float = 1.0) -> None:
         """Run the decision agent loop."""
         if self._consumer is None:

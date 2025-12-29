@@ -105,9 +105,11 @@ const state = {
 
 // Elements
 const el = {};
+let toastContainer;
 
 function init() {
   cacheElements();
+  toastContainer = document.getElementById('toast-container');
   router.init();
   initTheme();
   initChart();
@@ -241,6 +243,15 @@ function initListeners() {
   if (el.settingSound) el.settingSound.checked = state.ui.soundEnabled;
   if (el.settingVisual) el.settingVisual.checked = state.ui.visualAlerts;
   if (el.settingTheme) el.settingTheme.checked = state.ui.darkMode;
+  
+  // Decision mode selector
+  document.querySelectorAll('input[name="decision-mode"]').forEach(radio => {
+    radio.addEventListener('change', e => {
+      if (e.target.checked) {
+        setDecisionMode(e.target.value);
+      }
+    });
+  });
 }
 
 function toggleMobileMenu() {
@@ -305,6 +316,8 @@ function handleMessage(data) {
     case 'scenario_started': handleScenarioStart(data); break;
     case 'scenario_complete': handleScenarioComplete(data); break;
     case 'metrics_reset': handleReset(); break;
+    case 'decision_mode_changed': handleDecisionModeChanged(data); break;
+    case 'decision_stats': updateDecisionStats(data.stats); break;
     case 'error': console.error(data.message); break;
   }
 }
@@ -316,7 +329,14 @@ function handleMetrics(data) {
   updateActors(data.top_actors);
   updateConfluent(data.confluent_status);
   updateKsqlDB(data.ksqldb_summaries);
+  updateDecisionStats(data.decision_stats);
   if (data.progress !== undefined) updateProgress(data.progress);
+  
+  // Update decision mode if provided
+  if (data.decision_mode) {
+    const radio = document.getElementById(`mode-${data.decision_mode.replace('_', '-')}`);
+    if (radio && !radio.checked) radio.checked = true;
+  }
 }
 
 function handleEvent(data) {
@@ -387,6 +407,38 @@ function handleReset() {
     state.chart.data.datasets[0].data = [];
     state.chart.update();
   }
+}
+
+// Decision Mode
+function setDecisionMode(mode) {
+  send({ action: 'set_decision_mode', mode: mode });
+}
+
+function handleDecisionModeChanged(data) {
+  // Update radio buttons
+  const radio = document.getElementById(`mode-${data.mode.replace('_', '-')}`);
+  if (radio) radio.checked = true;
+  
+  // Update stats
+  updateDecisionStats(data.decision_stats);
+}
+
+function updateDecisionStats(stats) {
+  if (!stats) return;
+  
+  const ruleDecisions = document.getElementById('stat-rule-decisions');
+  const cacheHits = document.getElementById('stat-cache-hits');
+  const aiDecisions = document.getElementById('stat-ai-decisions');
+  const ruleLatency = document.getElementById('stat-rule-latency');
+  const cacheLatency = document.getElementById('stat-cache-latency');
+  const aiLatency = document.getElementById('stat-ai-latency');
+  
+  if (ruleDecisions) ruleDecisions.textContent = stats.rule_decisions || 0;
+  if (cacheHits) cacheHits.textContent = stats.cache_hits || 0;
+  if (aiDecisions) aiDecisions.textContent = stats.ai_decisions || 0;
+  if (ruleLatency) ruleLatency.textContent = (stats.avg_rule_latency_ms || 0).toFixed(1);
+  if (cacheLatency) cacheLatency.textContent = (stats.avg_cache_latency_ms || 0).toFixed(1);
+  if (aiLatency) aiLatency.textContent = (stats.avg_ai_latency_ms || 0).toFixed(1);
 }
 
 // UI Updates
@@ -543,7 +595,12 @@ function addEvent(data) {
   `;
   
   item.addEventListener('click', () => showExplanation(data));
-  if (d === 'block') showExplanation(data);
+  if (d === 'block') {
+    showExplanation(data);
+    showToast('Threat Blocked', `${data.event.actor_id} - ${data.event.action}`, 'danger');
+  } else if (d === 'escalate') {
+    showToast('Escalated', `${data.event.actor_id} - ${data.event.action}`, 'warning', 3000);
+  }
   
   el.eventFeed.insertBefore(item, el.eventFeed.firstChild);
   while (el.eventFeed.children.length > 50) el.eventFeed.removeChild(el.eventFeed.lastChild);
@@ -693,6 +750,48 @@ function triggerAlert() {
     el.blockedCard.classList.add('flash', 'shake');
     setTimeout(() => el.blockedCard.classList.remove('flash', 'shake'), 500);
   }
+}
+
+// Toast Notifications
+function showToast(title, message, type = 'danger', duration = 4000) {
+  console.log('showToast called:', title, message, type);
+  if (!toastContainer) {
+    console.error('Toast container not found!');
+    return;
+  }
+  
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      ${type === 'danger' ? '<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>' : 
+        type === 'warning' ? '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>' :
+        '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'}
+    </svg>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-message">${message}</div>
+    </div>
+    <button class="toast-close" onclick="this.parentElement.remove()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  `;
+  
+  toastContainer.appendChild(toast);
+  console.log('Toast appended to container');
+  
+  // Limit to 5 toasts
+  while (toastContainer.children.length > 5) {
+    toastContainer.firstChild.remove();
+  }
+  
+  // Auto remove
+  setTimeout(() => {
+    toast.classList.add('toast-out');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
 }
 
 // Actions

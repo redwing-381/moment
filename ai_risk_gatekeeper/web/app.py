@@ -12,6 +12,7 @@ from .state import state
 from .routes import router
 from .websocket import websocket_endpoint
 from ai_risk_gatekeeper.agents import EventProducer, SignalProcessor, DecisionAgent
+from ai_risk_gatekeeper.agents.hybrid_decision_engine import HybridDecisionEngine
 from ai_risk_gatekeeper.config.settings import config_manager
 
 # Optional Confluent advanced features
@@ -38,7 +39,17 @@ async def lifespan(app: FastAPI):
         state.processor = SignalProcessor(use_real_frequency=False)
         state.decision_agent = DecisionAgent()
         state.decision_agent.connect()
-        print("✓ Core agents connected")
+        
+        # Initialize hybrid decision engine for high-throughput processing
+        state.hybrid_engine = HybridDecisionEngine(
+            low_threshold=0.3,      # Auto-allow below this
+            high_threshold=0.8,     # Auto-block above this
+            max_concurrent_ai=10,   # Max concurrent AI requests
+            max_queue_size=100,     # Queue overflow threshold
+            cache_ttl_seconds=300,  # 5 minute cache TTL
+            cache_max_size=1000     # Max cached decisions
+        )
+        print("✓ Core agents connected (with hybrid decision engine)")
     except Exception as e:
         state.kafka_metrics["connection_status"] = "error"
         print(f"Warning: Could not connect agents: {e}")

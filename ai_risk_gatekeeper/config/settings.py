@@ -64,7 +64,7 @@ class VertexAIConfig:
     """Configuration for Google Cloud Vertex AI integration."""
     project_id: str
     location: str
-    model_name: str = "gemini-1.5-pro"
+    model_name: str = "gemini-1.5-flash"
     credentials_path: Optional[str] = None
     
     # AI decision parameters
@@ -178,7 +178,7 @@ class ConfigManager:
             ),
             model_name=self._get_config_value(
                 "VERTEX_AI_MODEL_NAME", 
-                yaml_config.get("vertex_ai", {}).get("model_name", "gemini-1.5-pro")
+                yaml_config.get("vertex_ai", {}).get("model_name", "gemini-1.5-flash")
             ),
             credentials_path=self._get_config_value(
                 "GOOGLE_APPLICATION_CREDENTIALS", 

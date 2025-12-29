@@ -11,6 +11,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from .state import state
 from .simulation import run_simulation, run_attack_scenario
+from ai_risk_gatekeeper.models.events import DecisionMode
 
 
 async def broadcast(message: dict):
@@ -34,7 +35,9 @@ async def websocket_endpoint(websocket: WebSocket):
     # Send current metrics on connect
     await websocket.send_json({
         "type": "metrics",
-        "data": state.get_metrics_dict()
+        "data": state.get_metrics_dict(),
+        "decision_stats": state.get_decision_stats_dict(),
+        "decision_mode": state.decision_mode.value,
     })
     
     try:
@@ -63,6 +66,30 @@ async def websocket_endpoint(websocket: WebSocket):
             elif action == "reset_metrics":
                 state.reset_metrics()
                 await broadcast({"type": "metrics_reset"})
+            
+            elif action == "set_decision_mode":
+                mode_str = msg.get("mode", "hybrid")
+                try:
+                    mode = DecisionMode(mode_str)
+                    state.set_decision_mode(mode)
+                    await broadcast({
+                        "type": "decision_mode_changed",
+                        "mode": mode.value,
+                        "decision_stats": state.get_decision_stats_dict(),
+                    })
+                except ValueError:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Invalid decision mode: {mode_str}"
+                    })
+            
+            elif action == "get_decision_stats":
+                await websocket.send_json({
+                    "type": "decision_stats",
+                    "stats": state.get_decision_stats_dict(),
+                    "mode": state.decision_mode.value,
+                    "cache_stats": state.hybrid_engine.cache_stats if state.hybrid_engine else {},
+                })
                 
     except WebSocketDisconnect:
         if websocket in state.connected_clients:
