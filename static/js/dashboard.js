@@ -94,6 +94,7 @@ const state = {
   ui: {
     soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
     visualAlerts: localStorage.getItem('visualAlerts') !== 'false',
+    darkMode: localStorage.getItem('theme') !== 'light',
     lastBlockedCount: 0,
     newBlockedCount: 0,
     isFirstEvent: true
@@ -108,6 +109,7 @@ const el = {};
 function init() {
   cacheElements();
   router.init();
+  initTheme();
   initChart();
   initListeners();
   connect();
@@ -168,6 +170,7 @@ function cacheElements() {
   // Settings
   el.settingSound = document.getElementById('setting-sound');
   el.settingVisual = document.getElementById('setting-visual');
+  el.settingTheme = document.getElementById('setting-theme');
   el.wsStatus = document.getElementById('ws-status');
   el.kafkaConnStatus = document.getElementById('kafka-conn-status');
   el.srConnStatus = document.getElementById('sr-conn-status');
@@ -179,6 +182,7 @@ function cacheElements() {
   el.mobileOverlay = document.getElementById('mobile-overlay');
   el.connectionStatus = document.getElementById('connection-status');
   el.soundToggle = document.getElementById('sound-toggle');
+  el.themeToggle = document.getElementById('theme-toggle');
   el.riskyActors = document.getElementById('risky-actors');
   el.riskChart = document.getElementById('risk-chart');
 }
@@ -213,6 +217,9 @@ function initListeners() {
   // Sound toggle
   el.soundToggle?.addEventListener('click', toggleSound);
   
+  // Theme toggle
+  el.themeToggle?.addEventListener('click', toggleTheme);
+  
   // Settings
   el.settingSound?.addEventListener('change', e => {
     state.ui.soundEnabled = e.target.checked;
@@ -225,9 +232,15 @@ function initListeners() {
     localStorage.setItem('visualAlerts', state.ui.visualAlerts);
   });
   
+  el.settingTheme?.addEventListener('change', e => {
+    state.ui.darkMode = e.target.checked;
+    applyTheme();
+  });
+  
   // Init settings checkboxes
   if (el.settingSound) el.settingSound.checked = state.ui.soundEnabled;
   if (el.settingVisual) el.settingVisual.checked = state.ui.visualAlerts;
+  if (el.settingTheme) el.settingTheme.checked = state.ui.darkMode;
 }
 
 function toggleMobileMenu() {
@@ -626,6 +639,36 @@ function toggleSound() {
 
 function updateSoundIcon() {
   el.soundToggle?.classList.toggle('muted', !state.ui.soundEnabled);
+}
+
+// Theme
+function initTheme() {
+  applyTheme();
+}
+
+function toggleTheme() {
+  state.ui.darkMode = !state.ui.darkMode;
+  applyTheme();
+  if (el.settingTheme) el.settingTheme.checked = state.ui.darkMode;
+}
+
+function applyTheme() {
+  const theme = state.ui.darkMode ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  
+  // Update chart colors if chart exists
+  if (state.chart) {
+    const gridColor = state.ui.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const tickColor = state.ui.darkMode ? '#6b7280' : '#64748b';
+    state.chart.options.scales.y.grid.color = gridColor;
+    state.chart.options.scales.y.ticks.color = tickColor;
+    state.chart.options.plugins.tooltip.backgroundColor = state.ui.darkMode ? '#1f2937' : '#ffffff';
+    state.chart.options.plugins.tooltip.titleColor = state.ui.darkMode ? '#f3f4f6' : '#1e293b';
+    state.chart.options.plugins.tooltip.bodyColor = state.ui.darkMode ? '#9ca3af' : '#64748b';
+    state.chart.options.plugins.tooltip.borderColor = state.ui.darkMode ? '#374151' : '#e2e8f0';
+    state.chart.update();
+  }
 }
 
 function playSound() {
