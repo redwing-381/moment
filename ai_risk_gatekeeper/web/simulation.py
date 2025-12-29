@@ -8,13 +8,58 @@ import asyncio
 import time
 import uuid
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .state import state
 from ai_risk_gatekeeper.agents import BehaviorPattern
 from ai_risk_gatekeeper.models.events import EnterpriseActionEvent
 from ai_risk_gatekeeper.agents.attack_scenarios import get_scenario
 from ai_risk_gatekeeper.utils.formatters import generate_explanation, get_top_risky_actors
+
+
+def _generate_local_summaries(actor_profiles: dict, limit: int = 5) -> list:
+    """
+    Generate ksqlDB-like summaries from local actor profiles.
+    
+    This provides a fallback when ksqlDB is unavailable or has no data.
+    """
+    summaries = []
+    now = datetime.now()
+    
+    # Sort actors by average risk (descending)
+    sorted_actors = sorted(
+        actor_profiles.items(),
+        key=lambda x: x[1].get("avg_risk", 0),
+        reverse=True
+    )[:limit]
+    
+    for actor_id, profile in sorted_actors:
+        avg_risk = profile.get("avg_risk", 0)
+        events = profile.get("events", 0)
+        blocked = profile.get("blocked", 0)
+        
+        # Calculate high risk count (events with risk > 0.7)
+        high_risk_count = blocked  # Approximate: blocked events are high risk
+        
+        # Determine if flagged
+        is_flagged = (
+            high_risk_count >= 3 or
+            avg_risk > 0.85 or
+            (avg_risk > 0.6 and events > 5)
+        )
+        
+        summaries.append({
+            "actor_id": actor_id,
+            "window_start": (now - timedelta(minutes=5)).isoformat(),
+            "window_end": now.isoformat(),
+            "event_count": events,
+            "avg_risk": round(avg_risk, 3),
+            "max_risk": round(min(avg_risk * 1.2, 1.0), 3),  # Estimate max
+            "high_risk_count": high_risk_count,
+            "is_flagged": is_flagged
+        })
+    
+    return summaries
 
 
 async def broadcast(message: dict):
@@ -211,14 +256,20 @@ async def run_attack_scenario(scenario_id: str, use_ai: bool = False):
                 except Exception:
                     pass
             
-            # Get ksqlDB summaries periodically
+            # Get ksqlDB summaries periodically (use local aggregation as fallback)
             ksqldb_summaries = []
-            if state.ksqldb_client and events_processed % 3 == 0:
-                try:
-                    summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
-                    ksqldb_summaries = [s.to_dict() for s in summaries]
-                except Exception:
-                    pass
+            if events_processed % 3 == 0:
+                # Try ksqlDB first, fall back to local aggregation
+                if state.ksqldb_client:
+                    try:
+                        summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
+                        ksqldb_summaries = [s.to_dict() for s in summaries]
+                    except Exception:
+                        pass
+                
+                # If no ksqlDB data, generate from local actor profiles
+                if not ksqldb_summaries and state.actor_profiles:
+                    ksqldb_summaries = _generate_local_summaries(state.actor_profiles)
             
             # Broadcast updated metrics
             await broadcast({
@@ -298,14 +349,20 @@ async def run_simulation(event_count: int, attack_percentage: int, duration_seco
                 except Exception:
                     pass
             
-            # Get ksqlDB summaries periodically
+            # Get ksqlDB summaries periodically (use local aggregation as fallback)
             ksqldb_summaries = []
-            if state.ksqldb_client and i % 3 == 0:
-                try:
-                    summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
-                    ksqldb_summaries = [s.to_dict() for s in summaries]
-                except Exception:
-                    pass
+            if i % 3 == 0:
+                # Try ksqlDB first, fall back to local aggregation
+                if state.ksqldb_client:
+                    try:
+                        summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
+                        ksqldb_summaries = [s.to_dict() for s in summaries]
+                    except Exception:
+                        pass
+                
+                # If no ksqlDB data, generate from local actor profiles
+                if not ksqldb_summaries and state.actor_profiles:
+                    ksqldb_summaries = _generate_local_summaries(state.actor_profiles)
             
             # Broadcast updated metrics
             await broadcast({
