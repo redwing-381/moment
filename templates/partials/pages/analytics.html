@@ -1,0 +1,17 @@
+<!-- ANALYTICS PAGE -->
+<div id="page-analytics" class="page">
+  <!-- Live Agent Status -->
+  {% include 'partials/components/agent-pipeline.html' %}
+
+  <!-- Real-Time Metrics Grid -->
+  <div class="grid-2">
+    {% include 'partials/components/confluent-cloud.html' %}
+    {% include 'partials/components/kafka-streaming.html' %}
+  </div>
+
+  <!-- Real-Time Aggregations -->
+  {% include 'partials/components/ksqldb-aggregations.html' %}
+
+  <!-- Live Architecture Diagram -->
+  {% include 'partials/components/architecture-diagram.html' %}
+</div>

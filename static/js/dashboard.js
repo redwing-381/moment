@@ -169,6 +169,28 @@ function cacheElements() {
   el.ksqldbSummaries = document.getElementById('ksqldb-summaries');
   el.ksqldbTableBody = document.getElementById('ksqldb-table-body');
   
+  // Agent Pipeline
+  el.pipelineStatus = document.getElementById('pipeline-status');
+  el.agentProducerStat = document.getElementById('agent-producer-stat');
+  el.agentProcessorStat = document.getElementById('agent-processor-stat');
+  el.agentDecisionStat = document.getElementById('agent-decision-stat');
+  el.agentAiStat = document.getElementById('agent-ai-stat');
+  el.agentProducerStatus = document.getElementById('agent-producer-status');
+  el.agentProcessorStatus = document.getElementById('agent-processor-status');
+  el.agentDecisionStatus = document.getElementById('agent-decision-status');
+  el.agentAiStatus = document.getElementById('agent-ai-status');
+  
+  // Architecture Visual
+  el.archEventsCount = document.getElementById('arch-events-count');
+  el.topicEventsCount = document.getElementById('topic-events-count');
+  el.topicSignalsCount = document.getElementById('topic-signals-count');
+  el.topicDecisionsCount = document.getElementById('topic-decisions-count');
+  el.archHybridMode = document.getElementById('arch-hybrid-mode');
+  el.archAllowCount = document.getElementById('arch-allow-count');
+  el.archThrottleCount = document.getElementById('arch-throttle-count');
+  el.archEscalateCount = document.getElementById('arch-escalate-count');
+  el.archBlockCount = document.getElementById('arch-block-count');
+  
   // Settings
   el.settingSound = document.getElementById('setting-sound');
   el.settingVisual = document.getElementById('setting-visual');
@@ -330,6 +352,8 @@ function handleMetrics(data) {
   updateConfluent(data.confluent_status);
   updateKsqlDB(data.ksqldb_summaries);
   updateDecisionStats(data.decision_stats);
+  updateAgentPipeline(data.data, data.decision_stats);
+  updateArchitecture(data.data, data.decision_mode);
   if (data.progress !== undefined) updateProgress(data.progress);
   
   // Update decision mode if provided
@@ -344,6 +368,8 @@ function handleEvent(data) {
   if (el.eventCountBadge) {
     el.eventCountBadge.textContent = `${state.metrics.events_produced} events`;
   }
+  // Flash architecture nodes on event
+  flashArchitectureFlow();
 }
 
 function handleSimStart(data) {
@@ -354,6 +380,7 @@ function handleSimStart(data) {
   el.btnStop?.classList.remove('hidden');
   badges.updateDashboard(true);
   setStatus(`Processing ${data.total_events} events...`);
+  updatePipelineStatus(true);
 }
 
 function handleSimComplete() {
@@ -364,6 +391,7 @@ function handleSimComplete() {
   badges.updateDashboard(false);
   updateProgress(100);
   setStatus('Complete');
+  updatePipelineStatus(false);
 }
 
 function handleScenarioStart(data) {
@@ -374,6 +402,7 @@ function handleScenarioStart(data) {
   el.btnStop?.classList.remove('hidden');
   badges.updateDashboard(true);
   setStatus(`Running: ${data.scenario.name}`);
+  updatePipelineStatus(true);
 }
 
 function handleScenarioComplete(data) {
@@ -381,6 +410,7 @@ function handleScenarioComplete(data) {
   el.btnStart?.classList.remove('hidden');
   el.btnStop?.classList.add('hidden');
   if (el.btnExport) el.btnExport.disabled = false;
+  updatePipelineStatus(false);
   badges.updateDashboard(false);
   updateProgress(100);
   setStatus(`${data.scenario} - ${data.summary.detection_rate}% detection`);
@@ -556,6 +586,76 @@ function updateKsqlDB(summaries) {
       `;
     }).join('');
   }
+}
+
+// Agent Pipeline Updates
+function updateAgentPipeline(metrics, decisionStats) {
+  if (!metrics) return;
+  
+  // Update agent stats
+  if (el.agentProducerStat) el.agentProducerStat.textContent = `${metrics.events_produced} events`;
+  if (el.agentProcessorStat) el.agentProcessorStat.textContent = `${metrics.events_produced} signals`;
+  if (el.agentDecisionStat) el.agentDecisionStat.textContent = `${metrics.decisions_made} decisions`;
+  
+  if (decisionStats && el.agentAiStat) {
+    el.agentAiStat.textContent = `${decisionStats.ai_decisions || 0} queries`;
+  }
+}
+
+function updatePipelineStatus(running) {
+  if (el.pipelineStatus) {
+    el.pipelineStatus.textContent = running ? 'Processing' : 'Idle';
+    el.pipelineStatus.className = `card-badge ${running ? 'success' : ''}`;
+  }
+  
+  // Update agent status indicators
+  const statuses = [el.agentProducerStatus, el.agentProcessorStatus, el.agentDecisionStatus];
+  statuses.forEach(s => {
+    if (s) s.className = `agent-status ${running ? 'active' : 'idle'}`;
+  });
+  
+  // AI status depends on whether AI is being used
+  if (el.agentAiStatus) {
+    const useAi = el.useAi?.checked;
+    el.agentAiStatus.className = `agent-status ${running && useAi ? 'active' : 'idle'}`;
+  }
+}
+
+// Architecture Visual Updates
+function updateArchitecture(metrics, decisionMode) {
+  if (!metrics) return;
+  
+  // Update counts
+  if (el.archEventsCount) el.archEventsCount.textContent = metrics.events_produced;
+  if (el.topicEventsCount) el.topicEventsCount.textContent = metrics.events_produced;
+  if (el.topicSignalsCount) el.topicSignalsCount.textContent = metrics.events_produced;
+  if (el.topicDecisionsCount) el.topicDecisionsCount.textContent = metrics.decisions_made;
+  
+  // Update decision counts
+  if (el.archAllowCount) el.archAllowCount.textContent = metrics.allowed;
+  if (el.archThrottleCount) el.archThrottleCount.textContent = metrics.throttled;
+  if (el.archEscalateCount) el.archEscalateCount.textContent = metrics.escalated;
+  if (el.archBlockCount) el.archBlockCount.textContent = metrics.blocked;
+  
+  // Update mode display
+  if (el.archHybridMode && decisionMode) {
+    const modeLabels = { fast: 'Fast Mode', hybrid: 'Hybrid Mode', full_ai: 'Full AI Mode' };
+    el.archHybridMode.textContent = modeLabels[decisionMode] || 'Hybrid Mode';
+  }
+}
+
+function flashArchitectureFlow() {
+  // Flash the flow lines to show data movement
+  const flows = ['flow-1', 'flow-2', 'flow-3', 'flow-4'];
+  flows.forEach((id, i) => {
+    const flow = document.getElementById(id);
+    if (flow) {
+      setTimeout(() => {
+        flow.classList.add('active');
+        setTimeout(() => flow.classList.remove('active'), 300);
+      }, i * 100);
+    }
+  });
 }
 
 function updateProgress(p) {

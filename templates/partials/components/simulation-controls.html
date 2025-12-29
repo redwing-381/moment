@@ -1,0 +1,61 @@
+<!-- Simulation Controls Card -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Simulation Control</h2>
+    <span class="card-badge" id="status-text">Ready</span>
+  </div>
+  <div class="card-body">
+    <div class="scenario-buttons">
+      <button id="btn-insider" class="scenario-btn">
+        <span class="scenario-label">Insider Threat</span>
+        <span class="scenario-desc">Privilege escalation pattern</span>
+      </button>
+      <button id="btn-bruteforce" class="scenario-btn">
+        <span class="scenario-label">Brute Force</span>
+        <span class="scenario-desc">High-frequency attempts</span>
+      </button>
+      <button id="btn-exfiltration" class="scenario-btn">
+        <span class="scenario-label">Data Exfiltration</span>
+        <span class="scenario-desc">Bulk download anomaly</span>
+      </button>
+    </div>
+    
+    <div class="controls-grid">
+      <div class="control-group">
+        <label class="control-label">Events</label>
+        <input type="range" id="event-count" min="10" max="500" value="50" class="range-input">
+        <span class="control-value" id="event-count-val">50</span>
+      </div>
+      <div class="control-group">
+        <label class="control-label">Attack %</label>
+        <input type="range" id="attack-pct" min="0" max="100" value="20" class="range-input">
+        <span class="control-value" id="attack-pct-val">20%</span>
+      </div>
+      <div class="control-group">
+        <label class="control-label">Duration</label>
+        <input type="range" id="duration" min="5" max="60" value="10" class="range-input">
+        <span class="control-value" id="duration-val">10s</span>
+      </div>
+      <div class="control-group">
+        <label class="control-label">Vertex AI</label>
+        <label class="switch">
+          <input type="checkbox" id="use-ai">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-bar"></div>
+      </div>
+    </div>
+    
+    <div class="action-buttons">
+      <button id="btn-start" class="btn btn-primary">Start Simulation</button>
+      <button id="btn-stop" class="btn btn-danger hidden">Stop</button>
+      <button id="btn-reset" class="btn btn-secondary">Reset</button>
+      <button id="btn-export" class="btn btn-secondary" disabled>Export Report</button>
+    </div>
+  </div>
+</div>

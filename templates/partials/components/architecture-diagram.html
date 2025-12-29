@@ -1,0 +1,135 @@
+<!-- Live Architecture Diagram Card - Horizontal Layout -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">
+      <svg class="card-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="3" y1="9" x2="21" y2="9"/>
+        <line x1="9" y1="21" x2="9" y2="9"/>
+      </svg>
+      System Architecture
+    </h2>
+    <span class="card-subtitle">Real-time data flow</span>
+  </div>
+  <div class="card-body">
+    <div class="arch-horizontal">
+      <!-- Ingestion -->
+      <div class="arch-col">
+        <div class="arch-col-label">Ingestion</div>
+        <div class="arch-box source">
+          <svg class="arch-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="arch-box-name">Events</span>
+          <span class="arch-box-count" id="arch-events-count">0</span>
+        </div>
+      </div>
+
+      <div class="arch-arrow">
+        <div class="arch-arrow-line" id="flow-1"></div>
+        <span class="arch-arrow-label">Avro</span>
+      </div>
+
+      <!-- Kafka -->
+      <div class="arch-col kafka-col">
+        <div class="arch-col-label">Confluent Kafka</div>
+        <div class="arch-topics">
+          <div class="arch-topic-item">
+            <span class="arch-topic-name">action-events</span>
+            <span class="arch-topic-count" id="topic-events-count">0</span>
+          </div>
+          <div class="arch-topic-item">
+            <span class="arch-topic-name">risk-signals</span>
+            <span class="arch-topic-count" id="topic-signals-count">0</span>
+          </div>
+          <div class="arch-topic-item">
+            <span class="arch-topic-name">decisions</span>
+            <span class="arch-topic-count" id="topic-decisions-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">
+        <div class="arch-arrow-line" id="flow-2"></div>
+        <span class="arch-arrow-label">Stream</span>
+      </div>
+
+      <!-- Processing -->
+      <div class="arch-col">
+        <div class="arch-col-label">Processing</div>
+        <div class="arch-stack">
+          <div class="arch-box processor">
+            <svg class="arch-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v4m0 14v4M4.22 4.22l2.83 2.83m9.9 9.9l2.83 2.83M1 12h4m14 0h4M4.22 19.78l2.83-2.83m9.9-9.9l2.83-2.83"/>
+            </svg>
+            <span class="arch-box-name">Signal</span>
+          </div>
+          <div class="arch-box processor">
+            <svg class="arch-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            <span class="arch-box-name">ksqlDB</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">
+        <div class="arch-arrow-line" id="flow-3"></div>
+        <span class="arch-arrow-label">Analyze</span>
+      </div>
+
+      <!-- Decision -->
+      <div class="arch-col">
+        <div class="arch-col-label">Decision</div>
+        <div class="arch-stack">
+          <div class="arch-box decision">
+            <svg class="arch-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span class="arch-box-name">Hybrid</span>
+            <span class="arch-box-mode" id="arch-hybrid-mode">Fast</span>
+          </div>
+          <div class="arch-box ai">
+            <svg class="arch-box-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <span class="arch-box-name">Vertex AI</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-arrow">
+        <div class="arch-arrow-line" id="flow-4"></div>
+        <span class="arch-arrow-label">Action</span>
+      </div>
+
+      <!-- Response -->
+      <div class="arch-col response-col">
+        <div class="arch-col-label">Response</div>
+        <div class="arch-responses">
+          <div class="arch-response allow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <span id="arch-allow-count">0</span>
+          </div>
+          <div class="arch-response throttle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="arch-throttle-count">0</span>
+          </div>
+          <div class="arch-response escalate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            <span id="arch-escalate-count">0</span>
+          </div>
+          <div class="arch-response block">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+            <span id="arch-block-count">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

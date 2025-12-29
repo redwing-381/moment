@@ -1007,20 +1007,687 @@ body {
 .data-table td.warning { color: var(--warning); }
 .data-table td.success { color: var(--success); }
 
-/* Architecture Diagram */
-.architecture-diagram {
+/* Architecture Diagram - Horizontal Layout */
+.arch-horizontal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 24px 16px;
   background: var(--bg-tertiary);
-  border-radius: var(--radius);
-  padding: 24px;
+  border-radius: var(--radius-lg);
   overflow-x: auto;
 }
 
-.architecture-diagram pre {
-  font-family: var(--font-mono);
+.arch-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  min-width: 90px;
+}
+
+.arch-col-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.arch-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  min-width: 80px;
+  transition: all 0.2s ease;
+}
+
+.arch-box:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.arch-box-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.arch-box-name {
   font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.arch-box-count {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.arch-box-mode {
+  font-size: 9px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.arch-box.source { border-color: var(--info); }
+.arch-box.source .arch-box-icon { color: var(--info); }
+
+.arch-box.processor { border-color: var(--warning); }
+.arch-box.processor .arch-box-icon { color: var(--warning); }
+
+.arch-box.decision { border-color: var(--primary); }
+.arch-box.decision .arch-box-icon { color: var(--primary); }
+
+.arch-box.ai { border-color: #a855f7; }
+.arch-box.ai .arch-box-icon { color: #a855f7; }
+
+.arch-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arch-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+}
+
+.arch-arrow-line {
+  width: 32px;
+  height: 2px;
+  background: linear-gradient(to right, var(--border-color), var(--primary), var(--border-color));
+  border-radius: 1px;
+  transition: all 0.3s ease;
+}
+
+.arch-arrow-line.active {
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.arch-arrow-label {
+  font-size: 8px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+
+/* Kafka Topics Column */
+.kafka-col {
+  min-width: 120px;
+  padding: 12px 16px;
+}
+
+.arch-topics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+}
+
+.arch-topic-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.arch-topic-name {
+  font-size: 10px;
+  font-family: var(--font-mono);
   color: var(--text-secondary);
-  line-height: 1.4;
-  margin: 0;
+}
+
+.arch-topic-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Response Column */
+.response-col {
+  min-width: 100px;
+  padding: 12px 16px;
+}
+
+.arch-responses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.arch-response {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 10px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+}
+
+.arch-response:hover {
+  transform: translateY(-2px);
+}
+
+.arch-response svg {
+  width: 18px;
+  height: 18px;
+}
+
+.arch-response span {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.arch-response.allow { border-color: var(--success); color: var(--success); }
+.arch-response.throttle { border-color: var(--warning); color: var(--warning); }
+.arch-response.escalate { border-color: #f97316; color: #f97316; }
+.arch-response.block { border-color: var(--danger); color: var(--danger); }
+
+/* Legacy Architecture Visual (keep for backwards compatibility) */
+.architecture-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-lg);
+}
+
+.arch-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.arch-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.arch-nodes {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.arch-nodes.processing { gap: 24px; }
+.arch-nodes.output { gap: 8px; }
+
+.arch-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  min-width: 100px;
+  transition: all 0.2s ease;
+}
+
+.arch-node:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.arch-node.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+
+.arch-node-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.arch-node-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.arch-node-name { font-size: 12px; font-weight: 500; }
+.arch-node-stat { font-size: 10px; color: var(--text-muted); }
+.arch-node-count { font-size: 14px; font-weight: 600; color: var(--primary); }
+
+.arch-node.source { border-color: var(--info); }
+.arch-node.source .arch-node-icon { color: var(--info); }
+
+.arch-node.processor { border-color: var(--warning); }
+.arch-node.processor .arch-node-icon { color: var(--warning); }
+
+.arch-node.decision { border-color: var(--primary); }
+.arch-node.decision .arch-node-icon { color: var(--primary); }
+
+.arch-node.ai { border-color: #a855f7; }
+.arch-node.ai .arch-node-icon { color: #a855f7; }
+
+.arch-node.output-allow { border-color: var(--success); }
+.arch-node.output-allow .arch-node-icon { color: var(--success); }
+
+.arch-node.output-throttle { border-color: var(--warning); }
+.arch-node.output-throttle .arch-node-icon { color: var(--warning); }
+
+.arch-node.output-escalate { border-color: #f97316; }
+.arch-node.output-escalate .arch-node-icon { color: #f97316; }
+
+.arch-node.output-block { border-color: var(--danger); }
+.arch-node.output-block .arch-node-icon { color: var(--danger); }
+
+.arch-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.arch-flow-line {
+  width: 2px;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--border-color), var(--primary), var(--border-color));
+  border-radius: 1px;
+  transition: background 0.3s ease;
+}
+
+.arch-flow-line.active {
+  background: linear-gradient(to bottom, var(--primary), var(--success), var(--primary));
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+.arch-flow-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.arch-kafka {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+}
+
+.arch-topic {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  min-width: 140px;
+}
+
+.topic-name {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.topic-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* Agent Pipeline */
+.agent-pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  flex-wrap: wrap;
+}
+
+.agent-node {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  transition: all 0.3s ease;
+}
+
+.agent-node.active {
+  border-color: var(--success);
+  background: var(--success-light);
+}
+
+.agent-node.ai-node { border-color: #a855f7; }
+.agent-node.ai-node.active { 
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.agent-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+}
+
+.agent-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--text-secondary);
+}
+
+.agent-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.agent-stat {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.agent-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s ease;
+}
+
+.agent-status.active {
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse-status 1s ease-in-out infinite;
+}
+
+.agent-status.idle { background: var(--text-muted); }
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.agent-arrow {
+  font-size: 18px;
+  color: var(--text-muted);
+}
+
+/* Card Title Icon */
+.card-title-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
+/* Confluent Services */
+.confluent-services {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.service-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.service-item:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.service-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.service-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.service-icon.schema-registry {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05));
+  color: #818cf8;
+}
+
+.service-icon.ksqldb {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+  color: #fbbf24;
+}
+
+.service-icon.metrics-api {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+  color: #4ade80;
+}
+
+.service-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.service-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.service-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Legacy Integration List (for backwards compatibility) */
+.integration-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.integration-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+}
+
+.integration-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.integration-icon-sm {
+  font-size: 18px;
+}
+
+.integration-left > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.integration-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.integration-detail {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Kafka Metrics Grid */
+.kafka-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.kafka-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.kafka-metric:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.kafka-metric-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  opacity: 0.8;
+}
+
+.kafka-metric-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.kafka-metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.kafka-metric-value.kafka-topic-name {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+}
+
+.kafka-metric-unit {
+  font-size: 16px;
+  font-weight: 500;
+  opacity: 0.6;
+}
+
+.kafka-metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.kafka-metric-value.mono {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.kafka-metric-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Empty State Enhanced */
+.empty-state .empty-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.empty-state .empty-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-state .empty-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.empty-state .empty-hint {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 /* Settings */
@@ -1242,6 +1909,14 @@ body {
   .content { padding: 16px; }
   .action-buttons { flex-wrap: wrap; }
   .action-buttons .btn { flex: 1; min-width: 120px; }
+  
+  /* Analytics responsive */
+  .agent-pipeline { flex-direction: column; gap: 4px; }
+  .agent-arrow { transform: rotate(90deg); }
+  .kafka-metrics-grid { grid-template-columns: 1fr; }
+  .arch-nodes { flex-direction: column; }
+  .arch-kafka { flex-direction: column; }
+  .arch-topic { min-width: auto; width: 100%; }
 }
 
 

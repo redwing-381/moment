@@ -211,6 +211,15 @@ async def run_attack_scenario(scenario_id: str, use_ai: bool = False):
                 except Exception:
                     pass
             
+            # Get ksqlDB summaries periodically
+            ksqldb_summaries = []
+            if state.ksqldb_client and events_processed % 3 == 0:
+                try:
+                    summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
+                    ksqldb_summaries = [s.to_dict() for s in summaries]
+                except Exception:
+                    pass
+            
             # Broadcast updated metrics
             await broadcast({
                 "type": "metrics",
@@ -221,6 +230,7 @@ async def run_attack_scenario(scenario_id: str, use_ai: bool = False):
                 "progress": round(events_processed / total_events * 100, 1),
                 "confluent_status": state.confluent_status,
                 "confluent_metrics": confluent_metrics_data,
+                "ksqldb_summaries": ksqldb_summaries,
                 "scenario_name": scenario.name,
                 "decision_stats": state.get_decision_stats_dict(),
                 "decision_mode": state.decision_mode.value,
@@ -290,7 +300,7 @@ async def run_simulation(event_count: int, attack_percentage: int, duration_seco
             
             # Get ksqlDB summaries periodically
             ksqldb_summaries = []
-            if state.ksqldb_client and i % 5 == 0:
+            if state.ksqldb_client and i % 3 == 0:
                 try:
                     summaries = await state.ksqldb_client.get_user_risk_summaries(limit=5)
                     ksqldb_summaries = [s.to_dict() for s in summaries]

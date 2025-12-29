@@ -1,0 +1,68 @@
+<!-- Agent Pipeline Status Card -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Agent Pipeline Status</h2>
+    <span class="card-badge" id="pipeline-status">Idle</span>
+  </div>
+  <div class="card-body">
+    <div class="agent-pipeline">
+      <div class="agent-node" id="agent-producer">
+        <div class="agent-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <div class="agent-info">
+          <span class="agent-name">Event Producer</span>
+          <span class="agent-stat" id="agent-producer-stat">0 events</span>
+        </div>
+        <div class="agent-status idle" id="agent-producer-status"></div>
+      </div>
+      <div class="agent-arrow">→</div>
+      <div class="agent-node" id="agent-processor">
+        <div class="agent-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10"/>
+            <path d="M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24"/>
+            <path d="M1 12h6m6 0h10"/>
+            <path d="M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/>
+          </svg>
+        </div>
+        <div class="agent-info">
+          <span class="agent-name">Signal Processor</span>
+          <span class="agent-stat" id="agent-processor-stat">0 signals</span>
+        </div>
+        <div class="agent-status idle" id="agent-processor-status"></div>
+      </div>
+      <div class="agent-arrow">→</div>
+      <div class="agent-node" id="agent-decision">
+        <div class="agent-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+            <path d="M12 2a10 10 0 0 1 10 10"/>
+          </svg>
+        </div>
+        <div class="agent-info">
+          <span class="agent-name">Decision Engine</span>
+          <span class="agent-stat" id="agent-decision-stat">0 decisions</span>
+        </div>
+        <div class="agent-status idle" id="agent-decision-status"></div>
+      </div>
+      <div class="agent-arrow">→</div>
+      <div class="agent-node ai-node" id="agent-ai">
+        <div class="agent-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="agent-info">
+          <span class="agent-name">Vertex AI</span>
+          <span class="agent-stat" id="agent-ai-stat">0 queries</span>
+        </div>
+        <div class="agent-status idle" id="agent-ai-status"></div>
+      </div>
+    </div>
+  </div>
+</div>

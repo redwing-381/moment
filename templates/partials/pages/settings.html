@@ -1,0 +1,154 @@
+<!-- SETTINGS PAGE -->
+<div id="page-settings" class="page">
+  <!-- Decision Engine Settings -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Decision Engine</h2>
+    </div>
+    <div class="card-body">
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">Decision Mode</span>
+            <span class="setting-desc">Control how decisions are made</span>
+          </div>
+          <div class="mode-selector">
+            <label class="mode-option">
+              <input type="radio" name="decision-mode" value="fast" id="mode-fast">
+              <span class="mode-label">Fast</span>
+              <span class="mode-desc">Rules only, 10k+/sec</span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="decision-mode" value="hybrid" id="mode-hybrid" checked>
+              <span class="mode-label">Hybrid</span>
+              <span class="mode-desc">Rules + AI for gray zone</span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="decision-mode" value="full_ai" id="mode-full-ai">
+              <span class="mode-label">Full AI</span>
+              <span class="mode-desc">AI for all decisions</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="decision-stats-panel" id="decision-stats-panel">
+        <div class="stats-header">Decision Statistics</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Rule Decisions</span>
+            <span class="stat-value" id="stat-rule-decisions">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Cache Hits</span>
+            <span class="stat-value" id="stat-cache-hits">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">AI Decisions</span>
+            <span class="stat-value" id="stat-ai-decisions">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Avg Rule Latency</span>
+            <span class="stat-value"><span id="stat-rule-latency">0</span>ms</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Avg Cache Latency</span>
+            <span class="stat-value"><span id="stat-cache-latency">0</span>ms</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Avg AI Latency</span>
+            <span class="stat-value"><span id="stat-ai-latency">0</span>ms</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preferences -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Preferences</h2>
+    </div>
+    <div class="card-body">
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">Dark Mode</span>
+            <span class="setting-desc">Switch between dark and light theme</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setting-theme" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">Sound Alerts</span>
+            <span class="setting-desc">Play audio when events are blocked</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setting-sound" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-name">Visual Alerts</span>
+            <span class="setting-desc">Flash screen on blocked events</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setting-visual" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection Status -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Connection Status</h2>
+    </div>
+    <div class="card-body">
+      <div class="connection-list">
+        <div class="connection-row">
+          <span class="connection-name">WebSocket</span>
+          <span class="status-badge success" id="ws-status">Connected</span>
+        </div>
+        <div class="connection-row">
+          <span class="connection-name">Kafka</span>
+          <span class="status-badge success" id="kafka-conn-status">Connected</span>
+        </div>
+        <div class="connection-row">
+          <span class="connection-name">Schema Registry</span>
+          <span class="status-badge" id="sr-conn-status">Checking</span>
+        </div>
+        <div class="connection-row">
+          <span class="connection-name">ksqlDB</span>
+          <span class="status-badge" id="ksql-conn-status">Checking</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">About</h2>
+    </div>
+    <div class="card-body">
+      <p class="about-text">
+        Moment is an enterprise security platform that combines 
+        Confluent Kafka streaming with Google Vertex AI for real-time threat detection.
+      </p>
+      <div class="tech-stack">
+        <span class="tech-tag">Confluent Kafka</span>
+        <span class="tech-tag">Schema Registry</span>
+        <span class="tech-tag">ksqlDB</span>
+        <span class="tech-tag">Vertex AI</span>
+        <span class="tech-tag">FastAPI</span>
+      </div>
+    </div>
+  </div>
+</div>
