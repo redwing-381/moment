@@ -448,6 +448,7 @@ body {
   margin-bottom: 0;
   display: flex;
   flex-direction: column;
+  max-height: calc(100vh - var(--topbar-height) - 48px);
 }
 
 .grid-2.full-height .card-body {
@@ -455,6 +456,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Critical for flex overflow scrolling */
 }
 
 /* Scenario Buttons */
@@ -748,6 +750,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0; /* Critical for flex overflow scrolling */
+}
+
+/* Ensure event feed scrolls within card on events page */
+.grid-2.full-height .event-feed {
+  max-height: calc(100vh - var(--topbar-height) - 180px);
 }
 
 .event-item {
@@ -828,6 +836,12 @@ body {
 .explanation-panel {
   flex: 1;
   overflow-y: auto;
+  min-height: 0; /* Critical for flex overflow scrolling */
+}
+
+/* Ensure explanation panel scrolls within card on events page */
+.grid-2.full-height .explanation-panel {
+  max-height: calc(100vh - var(--topbar-height) - 180px);
 }
 
 .explanation-header {
