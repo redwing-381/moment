@@ -229,12 +229,14 @@ pytest tests/ -v
 
 ---
 
-## 👥 Team
+## 👤 Author
 
-Built with ❤️ for **AI Partner Catalyst: Accelerate Innovation 2025**
+**Solaimuthu A**
+
+Built for **AI Partner Catalyst: Accelerate Innovation 2025** | Confluent Challenge
 
 ---
 
 ## 📄 License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.
